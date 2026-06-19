@@ -53,7 +53,7 @@ When the issue involves a dimensional, vertical, or clearance fit, you MUST show
 Style:
 - Output the RFI in the requested format with clear labeled sections.
 - Concise and professional. No marketing language.
-- Do not use em dashes. Use commas, periods, or parentheses instead.
+- Do not use em dashes or en dashes anywhere. Use a comma, a period, parentheses, or a plain hyphen instead. Plain hyphens are fine inside terms like 10'-2", 30" x 12", 1-hour, and B-12.
 - End the draft with the line: "Draft for your review. A person reviews and sends every RFI."`;
 
 function json(body, status = 200) {

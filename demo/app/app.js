@@ -3,8 +3,10 @@
 // =============================================================================
 // Augment, not automate: the AI drafts, the human decides. The draft renders as
 // a clean document by default and stays editable (Edit toggle). Approving the
-// draft signs it with the reviewer's name. Nothing is stored; a refresh clears
-// everything (no localStorage anywhere in this file).
+// draft requires a named reviewer and stamps an internal approval block (name,
+// date, and an honest AI-provenance note) into the document, which the copied
+// output carries. Nothing is stored; a refresh clears everything (no
+// localStorage anywhere in this file).
 // =============================================================================
 
 import { ISSUES, resolveCase, buildPrompt } from "./data/issues.js";
@@ -37,7 +39,7 @@ const els = {
 let busy = false;
 let editMode = false;
 let rawDraft = ""; // the draft body (markdown/plain text)
-let signature = null; // { name, date } once approved
+let approval = null; // { name, date } once approved
 
 // ---- Populate the dropdown from the single source ----
 for (const issue of ISSUES) {
@@ -45,6 +47,13 @@ for (const issue of ISSUES) {
   opt.value = issue.id;
   opt.textContent = issue.label;
   els.select.appendChild(opt);
+}
+
+// House style: no em dashes or en dashes anywhere in output. Normalize any dash
+// the live model emits to a plain hyphen. Legitimate hyphens (10'-2", 30" x 12",
+// 1-hour, B-12) use the regular hyphen-minus and are left untouched.
+function normalizeDashes(s) {
+  return s.replace(/[‒–—―−]/g, "-");
 }
 
 // =============================================================================
@@ -61,7 +70,7 @@ function inline(s) {
     .replace(/`([^`]+?)`/g, "<code>$1</code>");
 }
 function renderMarkdown(md) {
-  const lines = escapeHtml(md).replace(/\r/g, "").split("\n");
+  const lines = escapeHtml(normalizeDashes(md)).replace(/\r/g, "").split("\n");
   let html = "";
   let i = 0;
   let listType = null;
@@ -157,20 +166,21 @@ function renderMarkdown(md) {
   return html;
 }
 
-function signatureHtml() {
-  if (!signature) return "";
+// Internal approval block (not a legal signature). The wide gap uses non-breaking
+// spaces so it survives as readable plain text when copied.
+function approvalBlockHtml() {
+  if (!approval) return "";
+  const gap = "        ";
   return (
-    '<div class="signature">' +
-    '<span class="sig-label">Approved by</span>' +
-    `<span class="sig-name">${escapeHtml(signature.name)}</span><br>` +
-    "Cascade Ridge Construction<br>" +
-    `Date: ${escapeHtml(signature.date)}` +
+    '<div class="approval">' +
+    `<p class="approval-line">Reviewed and approved by: <strong>${escapeHtml(approval.name)}</strong>${gap}Date: ${escapeHtml(approval.date)}</p>` +
+    '<p class="approval-note">Draft prepared with AI assistance · approved by the named reviewer before issue.</p>' +
     "</div>"
   );
 }
 
 function renderDraft() {
-  els.rendered.innerHTML = renderMarkdown(rawDraft) + signatureHtml();
+  els.rendered.innerHTML = renderMarkdown(rawDraft) + approvalBlockHtml();
 }
 
 // ---- Render helpers (inputs / prompt) ----
@@ -222,25 +232,23 @@ function refreshPreview() {
   renderPrompt(buildPrompt(c.issueText, c.docs));
 }
 
-// ---- Review checklist + signature gating ----
+// ---- Review checklist + approval gating ----
 function canApprove() {
   const allChecked = els.reviewChecks().every((c) => c.checked);
   const named = els.signerName.value.trim().length > 0;
-  return allChecked && named && !signature;
+  return allChecked && named && !approval;
 }
 function refreshGate() {
   els.acceptBtn.disabled = !canApprove();
   if (!els.acceptBtn.disabled) return;
-  // If not approvable, copy stays locked unless already signed.
-  if (!signature) {
+  if (!approval) {
     els.copyBtn.disabled = true;
     els.copyNote.hidden = true;
   }
 }
 function resetReview() {
   els.reviewChecks().forEach((c) => (c.checked = false));
-  els.signerName.value = els.signerName.value; // keep typed name across drafts
-  signature = null;
+  approval = null;
   els.acceptBtn.disabled = true;
   els.copyBtn.disabled = true;
   els.copyNote.hidden = true;
@@ -256,7 +264,7 @@ function setEditMode(on) {
     els.editToggle.textContent = "Preview";
     els.editHint.hidden = false;
   } else {
-    rawDraft = els.draftText.value;
+    rawDraft = normalizeDashes(els.draftText.value);
     renderDraft();
     els.draftText.hidden = true;
     els.rendered.hidden = false;
@@ -272,7 +280,7 @@ function startDraftUI() {
   resetReview();
   editMode = false;
   rawDraft = "";
-  signature = null;
+  approval = null;
   els.draftText.hidden = true;
   els.rendered.hidden = true;
   els.toolbar.hidden = true;
@@ -282,7 +290,7 @@ function startDraftUI() {
   els.status.classList.add("working");
 }
 function finishDraftUI({ saved }) {
-  els.status.textContent = saved ? "Saved example draft ready. Review and sign." : "Draft ready. Review and sign.";
+  els.status.textContent = saved ? "Saved example draft ready. Review and approve." : "Draft ready. Review and approve.";
   els.status.classList.remove("working");
   els.savedBanner.hidden = !saved;
   els.toolbar.hidden = false;
@@ -291,7 +299,7 @@ function finishDraftUI({ saved }) {
   els.reviewBlock.hidden = false;
 }
 function updateDraft(text) {
-  rawDraft = text;
+  rawDraft = normalizeDashes(text);
   if (!editMode) {
     renderDraft();
     els.rendered.hidden = false;
@@ -369,20 +377,19 @@ async function runDraft() {
   }
 }
 
-// ---- Approve + sign, then copy (the only finish path; nothing is stored) ----
+// ---- Approve, then copy (the only finish path; nothing is stored) ----
 function onApprove() {
   if (!canApprove()) return;
-  // If the reviewer left edit mode unfinished, capture their edits first.
-  if (editMode) setEditMode(false);
+  if (editMode) setEditMode(false); // capture any pending edits first
   const date = new Date().toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" });
-  signature = { name: els.signerName.value.trim(), date };
+  approval = { name: els.signerName.value.trim(), date };
   renderDraft();
   els.acceptBtn.disabled = true;
   els.copyBtn.disabled = false;
-  els.status.textContent = "Approved and signed. Ready to copy.";
+  els.status.textContent = "Approved by " + approval.name + ". Ready to copy.";
 }
 async function onCopy() {
-  // Copy the clean, rendered plain text (no markdown markup), signature included.
+  // Copy the clean, rendered plain text (no markup, no dashes), approval included.
   const text = els.rendered.innerText;
   try {
     await navigator.clipboard.writeText(text);
@@ -415,14 +422,14 @@ document.addEventListener("change", (e) => {
   if (e.target.classList && e.target.classList.contains("review-check")) refreshGate();
 });
 
-// Editing the draft after signing clears the signature and re-locks copy.
+// Editing the draft after approval clears the approval and re-locks copy.
 els.draftText.addEventListener("input", () => {
-  rawDraft = els.draftText.value;
-  if (signature || !els.copyBtn.disabled) {
-    signature = null;
+  rawDraft = normalizeDashes(els.draftText.value);
+  if (approval || !els.copyBtn.disabled) {
+    approval = null;
     els.copyBtn.disabled = true;
     els.copyNote.hidden = true;
-    els.status.textContent = "Draft edited. Re-approve to sign.";
+    els.status.textContent = "Draft edited. Re-approve before copying.";
   }
   refreshGate();
 });

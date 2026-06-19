@@ -439,25 +439,25 @@ body {
   padding: 1px 4px;
   border-radius: 3px;
 }
-.draft-rendered .signature {
+.draft-rendered .approval {
   margin-top: 18px;
   padding-top: 12px;
   border-top: 2px solid var(--royal);
   font-family: var(--body);
 }
-.draft-rendered .signature .sig-label {
-  font-family: var(--display);
-  font-weight: 700;
-  font-size: 12px;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  color: var(--brick);
-  display: block;
-  margin-bottom: 4px;
+.draft-rendered .approval .approval-line {
+  font-size: 15px;
+  margin: 0 0 6px;
 }
-.draft-rendered .signature .sig-name {
+.draft-rendered .approval .approval-line strong {
   font-weight: 600;
-  font-size: 17px;
+  font-size: 16px;
+}
+.draft-rendered .approval .approval-note {
+  font-size: 12.5px;
+  font-style: italic;
+  color: #5a5d65;
+  margin: 0;
 }
 
 .signer-name {
