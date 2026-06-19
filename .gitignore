@@ -1,0 +1,17 @@
+# Dependencies
+node_modules/
+
+# Netlify
+.netlify/
+
+# Secrets - never commit
+.env
+.env.*
+*.env
+
+# OS
+.DS_Store
+
+# Logs
+*.log
+npm-debug.log*

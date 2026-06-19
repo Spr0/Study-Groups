@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Study Groups - RFI Drafter</title>
+    <meta
+      name="description"
+      content="Live demo: draft a construction RFI from conflicting project documents in seconds. Augment, not automate."
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@600;700;800&family=Spectral:wght@400;500;600&family=Space+Mono:wght@400;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <!-- Masthead -->
+    <header class="masthead">
+      <div class="masthead-inner">
+        <div class="lockup">
+          <span class="sg-mark">SG</span>
+          <span class="sg-word">Study Groups</span>
+        </div>
+        <div class="masthead-purpose">General Contractor Session &middot; RFI Drafter</div>
+      </div>
+    </header>
+
+    <main class="wrap">
+      <section class="intro">
+        <h1>Conflicting documents, drafted in seconds</h1>
+        <p class="lede">
+          Pick an issue from the project, or type your own. Watch the prompt assemble, then watch the
+          RFI draft come back. The AI drafts. You decide.
+        </p>
+      </section>
+
+      <div class="panels">
+        <!-- Panel 1: Inputs -->
+        <section class="panel" id="panel-inputs">
+          <div class="panel-head">
+            <span class="panel-num">1</span>
+            <h2>Inputs</h2>
+          </div>
+
+          <label class="field-label" for="issue-select">Choose an issue</label>
+          <select id="issue-select" class="select">
+            <option value="" disabled selected>Select a project issue...</option>
+          </select>
+
+          <div class="or-row"><span>or type your own (the encore)</span></div>
+
+          <label class="field-label" for="free-text">Describe an issue in your own words</label>
+          <textarea
+            id="free-text"
+            class="free-text"
+            rows="3"
+            placeholder="e.g. The door schedule shows a 90-minute door at the stair, but the wall it sits in is only 1-hour rated..."
+          ></textarea>
+
+          <div class="controls">
+            <button id="draft-btn" class="btn btn-primary">Draft the RFI</button>
+            <label class="offline-toggle" title="Force the saved-example path to show the stage fallback">
+              <input type="checkbox" id="simulate-offline" />
+              <span>Simulate offline (show fallback)</span>
+            </label>
+          </div>
+
+          <div class="subhead">Sample documents in play</div>
+          <div id="docs" class="docs">
+            <p class="muted">Pick an issue to see the documents the draft will read from.</p>
+          </div>
+
+          <div class="subhead">The issue</div>
+          <div id="issue-text" class="issue-text muted">Nothing selected yet.</div>
+        </section>
+
+        <!-- Panel 2: Prompt -->
+        <section class="panel" id="panel-prompt">
+          <div class="panel-head">
+            <span class="panel-num">2</span>
+            <h2>Prompt</h2>
+          </div>
+          <p class="panel-note">This is exactly what gets sent to the model. No magic, just the mechanism.</p>
+          <pre id="prompt-view" class="prompt-view muted">The populated prompt will appear here.</pre>
+        </section>
+
+        <!-- Panel 3: Draft -->
+        <section class="panel" id="panel-draft">
+          <div class="panel-head">
+            <span class="panel-num">3</span>
+            <h2>Draft for your review</h2>
+          </div>
+
+          <div id="saved-banner" class="saved-banner" hidden>
+            Showing a saved example draft. Live AI was unavailable, so the demo keeps going.
+          </div>
+
+          <div id="draft-status" class="draft-status muted">Your draft will appear here.</div>
+
+          <textarea
+            id="draft-text"
+            class="draft-text"
+            rows="18"
+            spellcheck="true"
+            placeholder="The RFI draft will stream in here, and you can edit it."
+            hidden
+          ></textarea>
+
+          <p class="standing-line">A person reviews and sends every RFI.</p>
+
+          <div id="review-block" class="review-block" hidden>
+            <div class="subhead">Review before you accept</div>
+            <label class="check"><input type="checkbox" class="review-check" /> References are right</label>
+            <label class="check"><input type="checkbox" class="review-check" /> One clear question</label>
+            <label class="check"><input type="checkbox" class="review-check" /> Nothing invented</label>
+            <label class="check"><input type="checkbox" class="review-check" /> Cost and schedule noted</label>
+
+            <div class="accept-row">
+              <button id="accept-btn" class="btn btn-accept" disabled>Accept - this is mine</button>
+              <button id="copy-btn" class="btn btn-copy" disabled>Copy to clipboard</button>
+              <span id="copy-note" class="copy-note" hidden>Copied. Nothing is saved.</span>
+            </div>
+          </div>
+        </section>
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        <span class="footer-word">Study Groups</span>
+      </div>
+    </footer>
+
+    <script type="module" src="app.js"></script>
+  </body>
+</html>

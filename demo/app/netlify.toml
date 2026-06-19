@@ -1,0 +1,16 @@
+# Netlify config for the GC RFI demo.
+# On Netlify, set the project's "Base directory" to: demo/app
+# Netlify then reads this file from within demo/app, so all paths below are
+# relative to demo/app.
+
+[build]
+  # Static front end: nothing to build. Publish the app directory as-is.
+  publish = "."
+  functions = "netlify/functions"
+
+[build.environment]
+  NODE_VERSION = "20"
+
+[functions]
+  # Bundle the shared /data module that the function imports.
+  included_files = ["data/**"]

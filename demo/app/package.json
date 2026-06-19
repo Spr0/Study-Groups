@@ -1,0 +1,11 @@
+{
+  "name": "gc-rfi-demo",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Single-purpose RFI drafter for the Study Groups General Contractor session. Augment, not automate.",
+  "scripts": {
+    "dev": "netlify dev",
+    "deploy": "netlify deploy --prod"
+  }
+}
