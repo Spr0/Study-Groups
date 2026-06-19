@@ -4,6 +4,9 @@ node_modules/
 # Netlify
 .netlify/
 
+# Local dev helper (machine-specific absolute paths)
+.claude/launch.json
+
 # Secrets - never commit
 .env
 .env.*

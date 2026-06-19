@@ -135,21 +135,20 @@ export default async (req, context) => {
   }
 
   // Proxy the Anthropic SSE stream and re-emit only the text deltas as plain text.
+  // A single start-based pump reads the upstream to completion. This avoids the
+  // pull re-entrancy trap where upstream events that carry no text (message_start,
+  // ping) would otherwise stall the consumer.
   const reader = upstream.body.getReader();
   const decoder = new TextDecoder();
   const encoder = new TextEncoder();
-  let buffer = "";
-  let emittedAny = false;
 
   const stream = new ReadableStream({
-    async pull(controller) {
-      try {
-        const { done, value } = await reader.read();
-        if (done) {
-          controller.close();
-          return;
-        }
-        buffer += decoder.decode(value, { stream: true });
+    start(controller) {
+      let buffer = "";
+      let emittedAny = false;
+
+      const emitFrom = (chunk) => {
+        buffer += chunk;
         const events = buffer.split("\n\n");
         buffer = events.pop() || "";
         for (const evt of events) {
@@ -170,14 +169,23 @@ export default async (req, context) => {
             }
           }
         }
-      } catch (err) {
-        // If the stream breaks before any text, surface a clear marker the client
-        // can swap for the local saved example.
-        if (!emittedAny) {
-          controller.enqueue(encoder.encode("__STREAM_ERROR__"));
+      };
+
+      (async () => {
+        try {
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            emitFrom(decoder.decode(value, { stream: true }));
+          }
+          controller.close();
+        } catch (err) {
+          // If the stream breaks before any text, surface a clear marker the
+          // client can swap for the local saved example.
+          if (!emittedAny) controller.enqueue(encoder.encode("__STREAM_ERROR__"));
+          controller.close();
         }
-        controller.close();
-      }
+      })();
     },
     cancel() {
       reader.cancel().catch(() => {});
