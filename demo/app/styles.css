@@ -337,6 +337,144 @@ body {
   resize: vertical;
   white-space: pre-wrap;
 }
+
+/* ---- Toolbar (Edit / Preview toggle) ---- */
+.draft-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 6px 0 10px;
+}
+.btn-link {
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 12px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--royal);
+  background: none;
+  border: 1px solid var(--hair);
+  border-radius: 5px;
+  padding: 5px 12px;
+  cursor: pointer;
+}
+.btn-link:hover {
+  border-color: var(--royal);
+}
+.edit-hint {
+  font-size: 12.5px;
+  font-style: italic;
+}
+
+/* ---- Rendered draft (the friendly document view) ---- */
+.draft-rendered {
+  background: var(--white);
+  border: 1px solid var(--hair);
+  border-radius: 6px;
+  padding: 20px 22px;
+  font-family: var(--body);
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--ink);
+  max-height: 620px;
+  overflow: auto;
+}
+.draft-rendered .md-h {
+  font-family: var(--display);
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  color: var(--royal);
+  margin: 18px 0 8px;
+}
+.draft-rendered .md-h:first-child {
+  margin-top: 0;
+}
+.draft-rendered h3.md-h {
+  font-size: 18px;
+}
+.draft-rendered h4.md-h {
+  font-size: 16px;
+}
+.draft-rendered p {
+  margin: 0 0 12px;
+}
+.draft-rendered strong {
+  color: var(--ink);
+  font-weight: 600;
+}
+.draft-rendered .md-list {
+  margin: 0 0 12px;
+  padding-left: 22px;
+}
+.draft-rendered .md-list li {
+  margin: 3px 0;
+}
+.draft-rendered .md-hr {
+  border: none;
+  border-top: 1px solid var(--hair);
+  margin: 14px 0;
+}
+.draft-rendered .md-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 4px 0 14px;
+  font-size: 14px;
+}
+.draft-rendered .md-table th,
+.draft-rendered .md-table td {
+  border: 1px solid var(--hair);
+  padding: 6px 10px;
+  text-align: left;
+  vertical-align: top;
+}
+.draft-rendered .md-table th {
+  background: var(--panel);
+  font-family: var(--display);
+  font-weight: 600;
+}
+.draft-rendered code {
+  font-family: var(--mono);
+  font-size: 13px;
+  background: var(--panel);
+  padding: 1px 4px;
+  border-radius: 3px;
+}
+.draft-rendered .signature {
+  margin-top: 18px;
+  padding-top: 12px;
+  border-top: 2px solid var(--royal);
+  font-family: var(--body);
+}
+.draft-rendered .signature .sig-label {
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 12px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--brick);
+  display: block;
+  margin-bottom: 4px;
+}
+.draft-rendered .signature .sig-name {
+  font-weight: 600;
+  font-size: 17px;
+}
+
+.signer-name {
+  width: 100%;
+  font-family: var(--body);
+  font-size: 15px;
+  color: var(--ink);
+  background: var(--white);
+  border: 1px solid var(--hair);
+  border-radius: 6px;
+  padding: 10px 12px;
+  margin-bottom: 4px;
+}
+.signer-name:focus {
+  outline: 2px solid var(--royal);
+  outline-offset: 1px;
+}
 .standing-line {
   font-family: var(--display);
   font-weight: 600;

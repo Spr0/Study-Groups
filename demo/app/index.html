@@ -100,6 +100,13 @@
 
           <div id="draft-status" class="draft-status muted">Your draft will appear here.</div>
 
+          <div id="draft-toolbar" class="draft-toolbar" hidden>
+            <button id="edit-toggle" class="btn-link" type="button">Edit</button>
+            <span class="edit-hint muted" id="edit-hint" hidden>Editing raw text. Click Preview when done.</span>
+          </div>
+
+          <article id="draft-rendered" class="draft-rendered" hidden></article>
+
           <textarea
             id="draft-text"
             class="draft-text"
@@ -118,8 +125,17 @@
             <label class="check"><input type="checkbox" class="review-check" /> Nothing invented</label>
             <label class="check"><input type="checkbox" class="review-check" /> Cost and schedule noted</label>
 
+            <label class="field-label" for="signer-name">Your name (signs the draft)</label>
+            <input
+              id="signer-name"
+              class="signer-name"
+              type="text"
+              autocomplete="off"
+              placeholder="e.g. Pat Morgan, Project Manager"
+            />
+
             <div class="accept-row">
-              <button id="accept-btn" class="btn btn-accept" disabled>Accept - this is mine</button>
+              <button id="accept-btn" class="btn btn-accept" disabled>Approve &amp; sign</button>
               <button id="copy-btn" class="btn btn-copy" disabled>Copy to clipboard</button>
               <span id="copy-note" class="copy-note" hidden>Copied. Nothing is saved.</span>
             </div>
