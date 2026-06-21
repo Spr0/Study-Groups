@@ -76,16 +76,20 @@ netlify dev                 # serves the client and /api/draft
 
 ## Deploy (each app to its own Netlify site)
 
-The submittal site uses **Base directory = `demo`** (the workspace root) so a single
-`npm install` hoists the shared packages and the function bundler resolves them cleanly.
-`demo/netlify.toml` builds only the submittal app:
+The submittal app deploys as a **monorepo package**. In Netlify, set the site's
+**package directory to `demo/apps/submittal`**; Netlify installs dependencies at the
+workspace root (so `@sg/core` and `@sg/sample-data` resolve), then builds only this app.
+Config lives in `apps/submittal/netlify.toml`:
 
-- Build command: `npm run build:submittal`
-- Publish: `apps/submittal/dist`
-- Functions: `apps/submittal/netlify/functions`
-- Env var: `ANTHROPIC_API_KEY` (secret), set in the site's settings (never committed).
+- Build command: `npm run build` (Vite)
+- Publish: `dist`
+- Functions: `netlify/functions`
+- Env var: `ANTHROPIC_API_KEY`, set in the site settings (never committed).
 
-The RFI app is a separate Netlify site with Base directory `demo/app`; it reads its own
+CLI (this is what produced the preview): from `demo/apps/submittal`, run
+`netlify deploy --build --site <id>` for a draft deploy, then add `--prod` to promote.
+
+The RFI app is a separate Netlify site with base directory `demo/app`; it reads its own
 `demo/app/netlify.toml` and is unaffected by the submittal site.
 
 ## Security and safety

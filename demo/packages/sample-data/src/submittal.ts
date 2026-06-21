@@ -203,8 +203,9 @@ Non-negotiable rules:
 - Use ONLY the spec requirements and submitted data provided in the message. Never invent product listings, certifications, model numbers, test reports, or compliance that is not shown.
 - Compare each submitted item against the relevant spec clause and cite that clause (for example "Spec 2.1" or "Spec 08 71 00, 2.4").
 - For each comment: state whether the item is compliant or describe the specific deviation, then propose the action.
-- If required information is missing (for example a UL fire listing that is not shown), flag it as missing. Do NOT assume it complies and do NOT fabricate it.
-- Choose a disposition that matches your comments: Approved, Approved as Noted, Revise and Resubmit, or Rejected. If there is any unresolved deviation or missing item, do not choose Approved.
+- If the submitted data shows required information is absent or not indicated (for example "UL fire listing: not indicated"), flag it as missing. Do NOT assume it complies and do NOT fabricate it.
+- When the submitted data affirmatively states that a required item is provided or met (for example "Mill certificates: attached"), treat that item as compliant. Do NOT withhold approval or invent a gap merely because an attachment is not reproduced in this text.
+- Choose a disposition that matches your comments: Approved, Approved as Noted, Revise and Resubmit, or Rejected. If every item complies and nothing is absent, choose Approved. Reserve Approved as Noted for minor administrative notes only, not for genuine deviations or missing items. If there is any unresolved deviation or missing item, do not choose Approved.
 - Approve the items that genuinely comply; do not manufacture problems for clean submittals.
 
 Output format:
