@@ -1,0 +1,129 @@
+/* App chrome for the submittal app. Brand tokens + component styles come from
+   @sg/core/styles.css (imported first in main.ts). */
+
+* {
+  box-sizing: border-box;
+}
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+body {
+  font-family: var(--body);
+  color: var(--ink);
+  background: var(--white);
+  line-height: 1.55;
+}
+
+.skip-link {
+  position: absolute;
+  left: -9999px;
+  top: 0;
+  background: var(--royal);
+  color: var(--white);
+  padding: 10px 14px;
+  z-index: 10;
+  font-family: var(--display);
+  font-weight: 700;
+}
+.skip-link:focus {
+  left: 8px;
+  top: 8px;
+}
+
+/* ---- Masthead ---- */
+.masthead {
+  background: var(--royal);
+  color: var(--white);
+}
+.masthead-inner {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 14px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+.lockup {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.sg-mark {
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: 20px;
+  letter-spacing: 0.04em;
+  background: var(--white);
+  color: var(--royal);
+  padding: 2px 8px;
+  border-radius: 3px;
+}
+.sg-word {
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 20px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.masthead-purpose {
+  font-family: var(--display);
+  font-weight: 600;
+  font-size: 14px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  opacity: 0.92;
+  text-align: right;
+}
+
+/* ---- Layout ---- */
+.wrap {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 28px 24px 64px;
+}
+.intro h1 {
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: clamp(26px, 3vw, 40px);
+  line-height: 1.05;
+  margin: 8px 0 6px;
+}
+.lede {
+  font-size: 18px;
+  max-width: 62ch;
+  margin: 0 0 24px;
+  color: #3a3d44;
+}
+
+/* ---- Footer ---- */
+.footer {
+  border-top: 1px solid var(--hair);
+  background: var(--white);
+}
+.footer-inner {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 18px 24px;
+}
+.footer-word {
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 14px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--royal);
+}
+
+@media (max-width: 920px) {
+  .masthead-inner {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+  .masthead-purpose {
+    text-align: left;
+  }
+}

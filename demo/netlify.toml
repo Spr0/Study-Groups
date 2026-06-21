@@ -1,0 +1,21 @@
+# Netlify config for the SUBMITTAL app's site.
+#
+# This site's "Base directory" is the workspace root (demo), so a single
+# `npm install` hoists the shared packages (@sg/core, @sg/sample-data) and their
+# dependencies, and both the Vite build and the function bundler resolve them
+# cleanly. The build command builds only the submittal app, so this site stays
+# independent: it never builds rfi or platform.
+#
+# The RFI app is a separate Netlify site with base directory `demo/app`; it reads
+# its own `demo/app/netlify.toml` and is unaffected by this file.
+
+[build]
+  command = "npm run build:submittal"
+  publish = "apps/submittal/dist"
+
+[build.environment]
+  NODE_VERSION = "20"
+
+[functions]
+  directory = "apps/submittal/netlify/functions"
+  node_bundler = "esbuild"

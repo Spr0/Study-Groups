@@ -15,6 +15,11 @@ node_modules/
 # OS
 .DS_Store
 
+# Build output
+dist/
+coverage/
+*.tsbuildinfo
+
 # Logs
 *.log
 npm-debug.log*

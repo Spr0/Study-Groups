@@ -1,0 +1,13 @@
+{
+  "name": "@sg/sample-data",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Shared Cascade Ridge / Lakeview MOB project and per-use-case content.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@sg/core": "^1.0.0"
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "types": ["node"],
+    "noEmit": true,
+    "baseUrl": ".",
+    "paths": {
+      "@sg/core": ["packages/core/src/index.ts"],
+      "@sg/core/server": ["packages/core/src/server/index.ts"],
+      "@sg/sample-data": ["packages/sample-data/src/index.ts"]
+    }
+  },
+  "include": [
+    "packages/*/src",
+    "apps/*/src",
+    "apps/*/netlify",
+    "apps/*/vite.config.ts",
+    "vitest.config.ts",
+    "eslint.config.js"
+  ]
+}

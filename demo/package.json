@@ -1,0 +1,31 @@
+{
+  "name": "study-groups-platform",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Study Groups document-review platform: shared core + sample-data packages consumed by independently deployable apps (RFI, submittal).",
+  "type": "module",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "build": "npm run build --workspaces --if-present",
+    "build:submittal": "npm run build -w @sg/submittal",
+    "dev:submittal": "npm run dev -w @sg/submittal",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.14.0",
+    "@types/node": "^22.9.0",
+    "eslint": "^9.14.0",
+    "prettier": "^3.3.3",
+    "typescript": "^5.6.3",
+    "typescript-eslint": "^8.13.0",
+    "vitest": "^2.1.4"
+  }
+}

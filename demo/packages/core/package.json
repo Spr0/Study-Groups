@@ -1,0 +1,15 @@
+{
+  "name": "@sg/core",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Shared document-review engine and serverless handler factory. Knows nothing specific about any one use case.",
+  "exports": {
+    ".": "./src/index.ts",
+    "./server": "./src/server/index.ts",
+    "./styles.css": "./src/styles.css"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.32.1"
+  }
+}
