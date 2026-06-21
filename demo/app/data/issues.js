@@ -66,7 +66,7 @@ export const SHARED_DOCS = {
 export const ISSUES = [
   {
     id: "concrete-strength",
-    label: "Concrete strength: spec says one thing, structural says another",
+    label: "Concrete strength: spec says 4,000 psi, structural says 3,000",
     docIds: ["spec-0330", "s-101"],
     issueText:
       "The concrete strength requirement for foundations conflicts between disciplines. " +
@@ -100,8 +100,8 @@ We assumed S-101 Note 3.a is the controlling structural note for these elements 
 Draft for your review. A person reviews and sends every RFI.`,
   },
   {
-    id: "duct-beam-ceiling",
-    label: "Duct won't fit: beam, duct, and ceiling height conflict over the corridor",
+    id: "duct-clash",
+    label: "Duct vs. beam vs. ceiling: the 30x12 duct won't fit over Corridor 1",
     docIds: ["s-301", "m-401", "a-201"],
     issueText:
       "Possible vertical interference over Corridor 1. The mechanical main supply duct (M-401) is 30\" x 12\" " +
@@ -146,8 +146,8 @@ We assumed about 2" duct insulation and about 6" for hangers and working clearan
 Draft for your review. A person reviews and sends every RFI.`,
   },
   {
-    id: "rated-wall-firestop",
-    label: "Rated wall gets a duct through it, but no firestop or damper is shown",
+    id: "firestop-missing",
+    label: "Rated wall, no firestop: duct penetrates the 1-hour corridor wall at C-4",
     docIds: ["ls-101", "m-401", "spec-0784"],
     issueText:
       "The 30\" x 12\" mechanical supply duct (M-401) penetrates the Corridor 1 wall at grid C-4. Per LS-101, " +
