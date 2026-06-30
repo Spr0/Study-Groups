@@ -6,8 +6,9 @@ import type { ApprovalConfig, UseCase } from "./types";
 
 const approval: ApprovalConfig = {
   label: "Reviewed and approved by",
-  provenanceNote: "drafted with AI assistance",
+  provenanceNote: "approved by the named reviewer before issue",
 };
+const approver = { name: "Pat Morgan", role: "Project Manager", date: "June 30, 2026" };
 
 function makeUseCase(overrides: Partial<UseCase> = {}): UseCase {
   return {
@@ -61,17 +62,20 @@ describe("markdownToPlainText", () => {
 });
 
 describe("approval block", () => {
-  it("builds the approval line", () => {
-    expect(buildApprovalLine(approval, "Pat Morgan")).toBe(
-      "Reviewed and approved by: Pat Morgan · drafted with AI assistance",
-    );
+  const CANON =
+    "Reviewed and approved by Pat Morgan, Project Manager, on June 30, 2026. Drafted with AI assistance; approved by the named reviewer before issue.";
+  it("builds the canonical approval line with name, role, and date", () => {
+    expect(buildApprovalLine(approval, approver)).toBe(CANON);
+  });
+  it("never uses signature language", () => {
+    expect(buildApprovalLine(approval, approver)).not.toMatch(/verified by a person|signature/i);
   });
   it("inserts the approval block into the copied output only when approved", () => {
     const body = "Draft body **here**.";
     expect(buildCopyText(body, approval, null)).not.toContain("Reviewed and approved by");
-    const copied = buildCopyText(body, approval, "Pat Morgan");
+    const copied = buildCopyText(body, approval, approver);
     expect(copied).toContain("Draft body here.");
-    expect(copied).toContain("Reviewed and approved by: Pat Morgan · drafted with AI assistance");
+    expect(copied).toContain(CANON);
   });
 });
 

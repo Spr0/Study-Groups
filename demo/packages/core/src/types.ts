@@ -3,6 +3,7 @@
 // The core knows nothing specific about RFIs or submittals. A use case is data
 // plus a few pure functions implementing this contract.
 // =============================================================================
+import type { RoiAppKey } from "./roi";
 
 /** Shared project metadata. One fictional project sits behind every use case. */
 export interface ProjectMeta {
@@ -76,6 +77,8 @@ export interface UseCase {
   standingLine: string;
   /** Generic offline-safe output for the free-typed encore. */
   freeTextFallback: string;
+  /** Which ROI config to show in the calculator panel. Omit to hide the panel. */
+  roiAppKey?: RoiAppKey;
 
   // ---- Optional UI polish (the engine supplies sensible defaults) ----
   /** Run-button text, e.g. "Draft the review". */

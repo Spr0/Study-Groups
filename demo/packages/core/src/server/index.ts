@@ -13,7 +13,8 @@ import { createRateLimiter } from "./rate-limit";
 
 export interface DraftHandlerConfig {
   useCases: UseCase[];
-  /** Defaults to ANTHROPIC_MODEL env or "claude-sonnet-4-6". */
+  /** Explicit model override. Otherwise read from ANTHROPIC_MODEL env, with NO
+   *  hardcoded fallback: a missing model fails loudly so it is caught in config. */
   model?: string;
   maxTokens?: number;
   freeTextCap?: number;
@@ -21,8 +22,6 @@ export interface DraftHandlerConfig {
   /** Reads the API key. Defaults to process.env.ANTHROPIC_API_KEY. */
   getApiKey?: () => string | undefined;
 }
-
-const DEFAULT_MODEL = "claude-sonnet-4-6";
 
 function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
@@ -40,7 +39,6 @@ export type DraftHandler = (req: Request) => Promise<Response>;
 export function createDraftHandler(config: DraftHandlerConfig): DraftHandler {
   config.useCases.forEach(validateUseCase);
   const byId = new Map(config.useCases.map((u) => [u.id, u]));
-  const model = config.model ?? process.env.ANTHROPIC_MODEL ?? DEFAULT_MODEL;
   const maxTokens = config.maxTokens ?? 1500;
   const freeTextCap = config.freeTextCap ?? 6000;
   const rateLimited = createRateLimiter(
@@ -84,6 +82,14 @@ export function createDraftHandler(config: DraftHandlerConfig): DraftHandler {
 
     const apiKey = getApiKey();
     if (!apiKey) return savedExample(resolved.fallbackDraft, "no-api-key");
+
+    // Model comes from env with no fallback. A key but no model is a real
+    // misconfiguration, so fail loudly rather than silently picking a default.
+    const model = config.model ?? process.env.ANTHROPIC_MODEL;
+    if (!model) {
+      console.error("[draft] missing ANTHROPIC_MODEL");
+      return json({ error: "Service is not configured. Try again later." }, 503);
+    }
 
     let messageStream: ReturnType<Anthropic["messages"]["stream"]>;
     try {

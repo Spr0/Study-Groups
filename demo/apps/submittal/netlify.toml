@@ -6,8 +6,8 @@
 # @sg/sample-data packages resolve), then builds only this app. All paths below are
 # relative to this package directory.
 #
-# The RFI app is a separate Netlify site with base directory `demo/app`; it is
-# unaffected by this file.
+# The RFI app is a separate Netlify site with package directory `demo/apps/rfi`;
+# it is unaffected by this file.
 
 [build]
   command = "npm run build"

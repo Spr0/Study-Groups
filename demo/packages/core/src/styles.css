@@ -417,6 +417,134 @@
   color: #6b6e76;
 }
 
+/* ---- Sign-off: name + role ---- */
+.signer-fields {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+.signer-field {
+  flex: 1;
+  min-width: 180px;
+}
+.signer-role {
+  width: 100%;
+  font-family: var(--body);
+  font-size: 15px;
+  color: var(--ink);
+  background: var(--white);
+  border: 1px solid var(--hair);
+  border-radius: 6px;
+  padding: 10px 12px;
+}
+
+/* ---- ROI panel ---- */
+.roi-panel {
+  grid-column: 1 / -1;
+}
+.roi-headline {
+  font-size: 15px;
+  line-height: 1.6;
+  color: #4a4d55;
+  margin: 0 0 16px;
+}
+.roi-score {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+.roi-score-eq {
+  font-family: var(--display);
+  font-size: 14px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink);
+}
+.roi-score-num {
+  font-family: var(--display);
+  font-size: 30px;
+  font-weight: 800;
+  color: var(--royal);
+  line-height: 1;
+}
+.roi-rank {
+  font-family: var(--display);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--brick);
+}
+.roi-inputs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+.roi-inputs .field-label {
+  flex: 1;
+  min-width: 150px;
+  margin-top: 0;
+}
+.roi-inputs input {
+  width: 100%;
+  margin-top: 6px;
+  font-family: var(--body);
+  font-size: 15px;
+  color: var(--ink);
+  background: var(--white);
+  border: 1px solid var(--hair);
+  border-radius: 6px;
+  padding: 9px 12px;
+}
+.roi-note {
+  display: block;
+  margin-top: 4px;
+  font-size: 12px;
+  font-style: italic;
+  color: #6b6e76;
+  text-transform: none;
+  letter-spacing: normal;
+}
+.roi-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.roi-stat {
+  flex: 1;
+  min-width: 140px;
+  background: var(--white);
+  border: 1px solid var(--hair);
+  border-radius: 8px;
+  padding: 14px 16px;
+}
+.roi-stat-hero {
+  border-color: var(--royal);
+  background: rgba(18, 42, 155, 0.06);
+}
+.roi-stat-label {
+  display: block;
+  font-family: var(--display);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--brick);
+  margin-bottom: 6px;
+}
+.roi-stat-value {
+  font-family: var(--display);
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--royal);
+}
+#roi-reset {
+  margin-top: 16px;
+}
+
 /* ---- Responsive: stack for projector / phone ---- */
 @media (max-width: 920px) {
   .panels {

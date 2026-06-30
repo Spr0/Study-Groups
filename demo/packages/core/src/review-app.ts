@@ -1,15 +1,19 @@
 // =============================================================================
-// The shared review engine (client). Renders the three-panel UI, assembles and
-// shows the prompt, streams the draft, and runs the human-in-the-loop gate. It
-// is driven entirely by a UseCase; it knows nothing about RFIs or submittals.
+// The shared review engine (client). Renders the panels, assembles and shows the
+// prompt, streams the draft, runs the human-in-the-loop gate, and shows the ROI
+// of building the tool. It is driven entirely by a UseCase; it knows nothing
+// about RFIs or submittals.
 //
 // Augment, not automate: the AI drafts, a named human reviews and approves.
-// Nothing is stored; a refresh clears everything (no localStorage).
+// No output leaves unsigned: Export, Copy, and Print are gated on a named
+// reviewer (name + role) and the review checklist. Nothing is stored; a refresh
+// clears everything (no localStorage).
 // =============================================================================
 import type { UseCase } from "./types";
 import { resolveCase, validateUseCase } from "./use-case";
 import { escapeHtml, normalizeDashes, renderMarkdown } from "./markdown";
-import { buildApprovalLine, buildCopyText } from "./approval";
+import { buildApprovalLine, buildCopyText, type Approver } from "./approval";
+import { computeRoi, ROI_CONFIG, ROI_HEADLINE, type RoiAppKey } from "./roi";
 import { fetchDraft } from "./client";
 import { DRAFT_ENDPOINT } from "./protocol";
 
@@ -53,8 +57,11 @@ export function createReviewApp(container: HTMLElement, options: ReviewAppOption
   const draftArea = $<HTMLTextAreaElement>("#draft-text");
   const reviewBlock = $("#review-block");
   const signerName = $<HTMLInputElement>("#signer-name");
+  const signerRole = $<HTMLInputElement>("#signer-role");
   const acceptBtn = $<HTMLButtonElement>("#accept-btn");
+  const exportBtn = $<HTMLButtonElement>("#export-btn");
   const copyBtn = $<HTMLButtonElement>("#copy-btn");
+  const printBtn = $<HTMLButtonElement>("#print-btn");
   const copyNote = $("#copy-note");
   const checks = (): HTMLInputElement[] =>
     Array.from(container.querySelectorAll<HTMLInputElement>(".review-check"));
@@ -63,7 +70,7 @@ export function createReviewApp(container: HTMLElement, options: ReviewAppOption
   let busy = false;
   let editMode = false;
   let rawDraft = "";
-  let approvedName: string | null = null;
+  let approved: Approver | null = null;
 
   // ---- Populate the instance dropdown ----
   for (const inst of uc.instances) {
@@ -118,10 +125,10 @@ export function createReviewApp(container: HTMLElement, options: ReviewAppOption
 
   // ---- Draft rendering ----
   function approvalHtml(): string {
-    if (!approvedName) return "";
+    if (!approved) return "";
     return (
       `<div class="approval"><p class="approval-line">` +
-      escapeHtml(buildApprovalLine(uc.approval, approvedName)) +
+      escapeHtml(buildApprovalLine(uc.approval, approved)) +
       `</p></div>`
     );
   }
@@ -137,22 +144,32 @@ export function createReviewApp(container: HTMLElement, options: ReviewAppOption
     }
   }
 
-  // ---- Gate ----
+  // ---- Gate: no output leaves unsigned ----
   function canApprove(): boolean {
-    return checks().every((c) => c.checked) && signerName.value.trim().length > 0 && !approvedName;
+    return (
+      checks().every((c) => c.checked) &&
+      signerName.value.trim().length > 0 &&
+      signerRole.value.trim().length > 0 &&
+      !approved
+    );
+  }
+  function setOutputsEnabled(on: boolean): void {
+    exportBtn.disabled = !on;
+    copyBtn.disabled = !on;
+    printBtn.disabled = !on;
   }
   function refreshGate(): void {
     acceptBtn.disabled = !canApprove();
-    if (acceptBtn.disabled && !approvedName) {
-      copyBtn.disabled = true;
+    if (acceptBtn.disabled && !approved) {
+      setOutputsEnabled(false);
       copyNote.hidden = true;
     }
   }
   function resetReview(): void {
     checks().forEach((c) => (c.checked = false));
-    approvedName = null;
+    approved = null;
     acceptBtn.disabled = true;
-    copyBtn.disabled = true;
+    setOutputsEnabled(false);
     copyNote.hidden = true;
   }
 
@@ -185,7 +202,7 @@ export function createReviewApp(container: HTMLElement, options: ReviewAppOption
     resetReview();
     editMode = false;
     rawDraft = "";
-    approvedName = null;
+    approved = null;
     draftArea.hidden = true;
     rendered.hidden = true;
     toolbar.hidden = true;
@@ -247,18 +264,40 @@ export function createReviewApp(container: HTMLElement, options: ReviewAppOption
     }
   }
 
-  // ---- Approve + copy ----
+  // ---- Approve, then export / copy / print ----
   function onApprove(): void {
     if (!canApprove()) return;
     if (editMode) setEditMode(false);
-    approvedName = signerName.value.trim();
+    const date = new Date().toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+    approved = { name: signerName.value.trim(), role: signerRole.value.trim(), date };
     renderDraft();
     acceptBtn.disabled = true;
-    copyBtn.disabled = false;
-    status.textContent = `Approved by ${approvedName}. Ready to copy.`;
+    setOutputsEnabled(true);
+    status.textContent = `Approved by ${approved.name}. Ready to export.`;
+  }
+  function signedText(): string {
+    return buildCopyText(rawDraft, uc.approval, approved);
+  }
+  function downloadText(filename: string, text: string): void {
+    const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    container.append(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  }
+  function onExport(): void {
+    downloadText(`${uc.id}-approved.txt`, signedText());
   }
   async function onCopy(): Promise<void> {
-    const text = buildCopyText(rawDraft, uc.approval, approvedName);
+    const text = signedText();
     try {
       await navigator.clipboard.writeText(text);
     } catch {
@@ -271,6 +310,26 @@ export function createReviewApp(container: HTMLElement, options: ReviewAppOption
     }
     copyNote.hidden = false;
   }
+  function onPrint(): void {
+    const text = signedText();
+    const frame = document.createElement("iframe");
+    frame.style.cssText = "position:fixed;right:0;bottom:0;width:0;height:0;border:0;";
+    document.body.append(frame);
+    const doc = frame.contentWindow!.document;
+    doc.open();
+    doc.write(
+      `<pre style="font-family:'Spectral',Georgia,serif;font-size:13px;line-height:1.6;white-space:pre-wrap;padding:24px;">${escapeHtml(
+        text,
+      )}</pre>`,
+    );
+    doc.close();
+    frame.contentWindow!.focus();
+    frame.contentWindow!.print();
+    setTimeout(() => frame.remove(), 1000);
+  }
+
+  // ---- ROI panel (optional) ----
+  if (uc.roiAppKey) setupRoi(container, uc.roiAppKey);
 
   // ---- Wiring ----
   select.addEventListener("change", () => {
@@ -284,24 +343,80 @@ export function createReviewApp(container: HTMLElement, options: ReviewAppOption
   runBtn.addEventListener("click", () => void run());
   editToggle.addEventListener("click", () => setEditMode(!editMode));
   acceptBtn.addEventListener("click", onApprove);
+  exportBtn.addEventListener("click", onExport);
   copyBtn.addEventListener("click", () => void onCopy());
+  printBtn.addEventListener("click", onPrint);
   signerName.addEventListener("input", refreshGate);
+  signerRole.addEventListener("input", refreshGate);
   container.addEventListener("change", (e) => {
     const t = e.target as HTMLElement;
     if (t.classList?.contains("review-check")) refreshGate();
   });
   draftArea.addEventListener("input", () => {
     rawDraft = normalizeDashes(draftArea.value);
-    if (approvedName || !copyBtn.disabled) {
-      approvedName = null;
-      copyBtn.disabled = true;
+    if (approved || !copyBtn.disabled) {
+      approved = null;
+      setOutputsEnabled(false);
       copyNote.hidden = true;
-      status.textContent = "Draft edited. Re-approve before copying.";
+      status.textContent = "Draft edited. Re-approve before export.";
     }
     refreshGate();
   });
 
   refreshPreview();
+}
+
+// -----------------------------------------------------------------------------
+// ROI panel: pure config + math from @sg/core, rendered as DOM. Time saved per
+// run shows immediately; annual figures appear once runs (and, for dollars, a
+// rate) are entered. We never invent a rate or a runs-per-month figure.
+// -----------------------------------------------------------------------------
+function setupRoi(container: HTMLElement, appKey: RoiAppKey): void {
+  const get = <T extends HTMLElement>(sel: string): T | null => container.querySelector<T>(sel);
+  const runs = get<HTMLInputElement>("#roi-runs");
+  const rate = get<HTMLInputElement>("#roi-rate");
+  const risk = get<HTMLInputElement>("#roi-risk");
+  const hoursOut = get("#roi-hours");
+  const dollarsOut = get("#roi-dollars");
+  const resetBtn = get<HTMLButtonElement>("#roi-reset");
+  if (!runs || !rate || !risk || !hoursOut || !dollarsOut || !resetBtn) return;
+
+  const num = (v: string): number | null => {
+    if (v.trim() === "") return null;
+    const n = Number(v);
+    return Number.isFinite(n) ? n : null;
+  };
+
+  function refresh(): void {
+    const r = num(runs!.value);
+    const rt = num(rate!.value);
+    const rk = num(risk!.value);
+    if (r === null) {
+      hoursOut!.textContent = "-";
+      dollarsOut!.textContent = "-";
+      return;
+    }
+    const result = computeRoi(appKey, {
+      runsPerMonth: r,
+      loadedHourlyRate: rt ?? 0,
+      riskPerRun: rk ?? 0,
+    });
+    hoursOut!.textContent = `${result.annualHours.toLocaleString(undefined, {
+      maximumFractionDigits: 1,
+    })} hrs`;
+    dollarsOut!.textContent =
+      rt === null ? "-" : `$${result.annualDollars.toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
+  }
+
+  runs.addEventListener("input", refresh);
+  rate.addEventListener("input", refresh);
+  risk.addEventListener("input", refresh);
+  resetBtn.addEventListener("click", () => {
+    runs.value = "";
+    rate.value = "";
+    risk.value = "";
+    refresh();
+  });
 }
 
 // -----------------------------------------------------------------------------
@@ -375,15 +490,65 @@ function template(
           ${checklist}
         </fieldset>
 
-        <label class="field-label" for="signer-name">${esc(uc.approval.label)}</label>
-        <input id="signer-name" class="signer-name" type="text" autocomplete="off" placeholder="e.g. Pat Morgan, Project Manager" />
+        <div class="signer-fields">
+          <div class="signer-field">
+            <label class="field-label" for="signer-name">${esc(uc.approval.label)}</label>
+            <input id="signer-name" class="signer-name" type="text" autocomplete="off" placeholder="Your name" />
+          </div>
+          <div class="signer-field">
+            <label class="field-label" for="signer-role">Role</label>
+            <input id="signer-role" class="signer-role" type="text" autocomplete="off" placeholder="Your role" />
+          </div>
+        </div>
 
         <div class="accept-row">
           <button id="accept-btn" class="btn btn-accept" type="button" disabled>Approve this draft</button>
-          <button id="copy-btn" class="btn btn-copy" type="button" disabled>Copy to clipboard</button>
+          <button id="export-btn" class="btn btn-copy" type="button" disabled>Export</button>
+          <button id="copy-btn" class="btn btn-copy" type="button" disabled>Copy</button>
+          <button id="print-btn" class="btn btn-copy" type="button" disabled>Print</button>
           <span id="copy-note" class="copy-note" role="status" hidden>Copied. Nothing is saved.</span>
         </div>
       </div>
     </section>
+${uc.roiAppKey ? roiPanel(uc.roiAppKey) : ""}
   </div>`;
+}
+
+function roiPanel(appKey: RoiAppKey): string {
+  const cfg = ROI_CONFIG[appKey];
+  const score = cfg.value * cfg.frequency;
+  const timeSaved = cfg.minutesWithout - cfg.minutesWith;
+  const esc = escapeHtml;
+  return `
+    <section class="panel roi-panel" aria-labelledby="roi-h">
+      <div class="panel-head"><h2 id="roi-h">Return on building this tool</h2></div>
+      <p class="roi-headline">${esc(ROI_HEADLINE)}</p>
+
+      <div class="roi-score">
+        <span class="roi-score-eq">Value ${cfg.value} x Frequency ${cfg.frequency} =</span>
+        <strong class="roi-score-num">${score}</strong>
+        <span class="roi-rank">${esc(cfg.rank)}</span>
+      </div>
+
+      <div class="roi-inputs">
+        <label class="field-label">Runs per month
+          <input id="roi-runs" type="number" min="0" inputmode="numeric" placeholder="e.g. 20" />
+        </label>
+        <label class="field-label">Loaded hourly rate ($)
+          <input id="roi-rate" type="number" min="0" inputmode="numeric" placeholder="your number" />
+        </label>
+        <label class="field-label">Dollars at risk per run (optional)
+          <input id="roi-risk" type="number" min="0" inputmode="numeric" placeholder="optional" />
+          <small class="roi-note">${esc(cfg.risk)}</small>
+        </label>
+      </div>
+
+      <div class="roi-stats">
+        <div class="roi-stat"><span class="roi-stat-label">Time saved per run</span><span class="roi-stat-value">${timeSaved} min</span></div>
+        <div class="roi-stat"><span class="roi-stat-label">Hours saved per year</span><span id="roi-hours" class="roi-stat-value">-</span></div>
+        <div class="roi-stat roi-stat-hero"><span class="roi-stat-label">Dollars per year</span><span id="roi-dollars" class="roi-stat-value">-</span></div>
+      </div>
+
+      <button id="roi-reset" class="btn-link" type="button">Reset</button>
+    </section>`;
 }

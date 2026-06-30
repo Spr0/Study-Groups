@@ -1,0 +1,18 @@
+# Netlify config for the RFI app's site (monorepo package).
+#
+# This app is its own Netlify site. Use Netlify's monorepo support: set the
+# site's package directory to `demo/apps/rfi` (CLI: `--filter @sg/rfi`). Netlify
+# installs dependencies at the workspace root (so the shared @sg/core and
+# @sg/sample-data packages resolve), then builds only this app. All paths below
+# are relative to this package directory.
+
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "20"
+
+[functions]
+  directory = "netlify/functions"
+  node_bundler = "esbuild"

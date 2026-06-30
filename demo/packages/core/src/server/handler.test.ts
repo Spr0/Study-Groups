@@ -86,4 +86,16 @@ describe("createDraftHandler (smoke)", () => {
     );
     expect(res.status).toBe(400);
   });
+
+  it("fails loudly (503) when an API key is present but ANTHROPIC_MODEL is unset", async () => {
+    const prev = process.env.ANTHROPIC_MODEL;
+    delete process.env.ANTHROPIC_MODEL;
+    try {
+      const h = createDraftHandler({ useCases: [fakeUseCase], getApiKey: () => "sk-test" });
+      const res = await h(post({ useCaseId: "t", instanceId: "i1" }));
+      expect(res.status).toBe(503);
+    } finally {
+      if (prev !== undefined) process.env.ANTHROPIC_MODEL = prev;
+    }
+  });
 });

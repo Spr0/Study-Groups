@@ -1,79 +1,101 @@
 // =============================================================================
-// GC RFI Demo - Single source of case content
+// RFI drafting - use case content (data + pure functions). Ported from the
+// original vanilla RFI app (demo/app/data/issues.js + draft.mjs) onto the
+// @sg/core UseCase contract so the RFI app consumes the shared engine, ROI, and
+// sign-off. Same fictional project as the submittal review for continuity.
 // =============================================================================
-// This is the ONE file to edit for a future vertical swap. It holds:
-//   - PROJECT          : the sample project identity
-//   - SHARED_DOCS      : the baked sample documents (all issues read from these)
-//   - ISSUES           : the three canned issues (+ which docs each one feeds)
-//   - PROMPT_TEMPLATE  : the exact prompt the function sends to Claude
-//   - vetted fallback drafts (one per issue, plus a generic free-text fallback)
-//   - helpers used by BOTH the browser and the Netlify function
-//
-// It is a plain ES module. The browser imports it via <script type="module">.
-// The serverless function imports it with a relative path. Same source, no drift.
-// =============================================================================
+import type { Instance, PromptInput, SourceDoc, UseCase } from "@sg/core";
+import { CASCADE_RIDGE } from "./project";
 
-export const PROJECT = {
-  name: "Lakeview Medical Office",
-  gc: "Cascade Ridge Construction",
-};
-
-// The RFI format line, kept verbatim with the prompt template.
-export const RFI_FORMAT =
+const RFI_FORMAT =
   "number, date, to, from, subject, question, suggested resolution, cost / schedule impact.";
 
 // -----------------------------------------------------------------------------
-// Shared sample documents (baked in, all issues read from these)
+// Shared reference documents (baked in; the issues read from these).
 // -----------------------------------------------------------------------------
-export const SHARED_DOCS = {
+const DOC: Record<string, SourceDoc> = {
   "spec-0330": {
+    id: "spec-0330",
+    kind: "ref",
     title: "Spec - 03 30 00 Cast-in-Place Concrete, 2.3 Concrete Mixes",
     body:
       "A. Foundations and footings: normal-weight concrete, min 28-day compressive strength f'c = 4,000 psi.\n" +
       "B. Slabs-on-grade: 4,000 psi, max water-cement ratio 0.45.",
   },
   "spec-0784": {
+    id: "spec-0784",
+    kind: "ref",
     title: "Spec - 07 84 00 Firestopping, 1.1",
     body: "Provide tested firestop systems at all rated penetrations. (No specific system named.)",
   },
   "s-101": {
+    id: "s-101",
+    kind: "ref",
     title: "Drawing - S-101 General Structural Notes, 3. Concrete",
     body: "a. All footings and foundation walls: f'c = 3,000 psi at 28 days, unless noted otherwise.",
   },
   "s-301": {
+    id: "s-301",
+    kind: "ref",
     title: "Drawing - S-301 Framing",
     body: "Beam B-12 over Corridor 1: bottom of steel at 10'-2\" AFF.",
   },
   "m-401": {
+    id: "m-401",
+    kind: "ref",
     title: "Drawing - M-401 Mechanical",
     body:
       "Main supply duct over Corridor 1: 30\" x 12\", route above ceiling. " +
       "Penetrates Corridor 1 wall at grid C-4.",
   },
   "a-201": {
+    id: "a-201",
+    kind: "ref",
     title: "Drawing - A-201 Architectural",
     body: "Corridor 1 finished ceiling: 9'-0\" AFF.",
   },
   "ls-101": {
+    id: "ls-101",
+    kind: "ref",
     title: "Drawing - LS-101 Life Safety",
     body: "Corridor 1 walls: 1-hour fire-rated, continuous to deck.",
   },
 };
+const ALL_REFERENCE_DOCS = Object.values(DOC);
 
-// -----------------------------------------------------------------------------
-// The three canned issues
-// -----------------------------------------------------------------------------
-export const ISSUES = [
-  {
-    id: "concrete-strength",
-    label: "Concrete strength: spec says 4,000 psi, structural says 3,000",
-    docIds: ["spec-0330", "s-101"],
-    issueText:
-      "The concrete strength requirement for foundations conflicts between disciplines. " +
+function ref(id: string): SourceDoc {
+  const d = DOC[id];
+  if (!d) throw new Error(`Unknown reference doc: ${id}`);
+  return d;
+}
+
+// The issue description rides as the first document (kind "issue"); the prompt
+// builder separates it from the reference docs.
+function issueInstance(
+  id: string,
+  label: string,
+  issueText: string,
+  docIds: string[],
+  fallbackDraft: string,
+): Instance {
+  return {
+    id,
+    label,
+    documents: [{ kind: "issue", title: "Issue", body: issueText }, ...docIds.map(ref)],
+    fallbackDraft,
+  };
+}
+
+const INSTANCES: Instance[] = [
+  issueInstance(
+    "concrete-strength",
+    "Concrete strength: spec says 4,000 psi, structural says 3,000",
+    "The concrete strength requirement for foundations conflicts between disciplines. " +
       "Spec section 03 30 00 (2.3.A) requires foundation and footing concrete at f'c = 4,000 psi, " +
       "while structural general note S-101 (3.a) calls for footings and foundation walls at f'c = 3,000 psi. " +
       "The foundation pour is scheduled for next week, so we need to know which value governs before we batch.",
-    fallbackDraft: `RFI No.: 001
+    ["spec-0330", "s-101"],
+    `RFI No.: 001
 Date: [today]
 To: Lakeview Medical Office - Architect / Structural Engineer of Record
 From: Cascade Ridge Construction
@@ -98,19 +120,18 @@ Assumptions:
 We assumed S-101 Note 3.a is the controlling structural note for these elements and that no separate detail supersedes it.
 
 Draft for your review. A person reviews and sends every RFI.`,
-  },
-  {
-    id: "duct-clash",
-    label: "Duct vs. beam vs. ceiling: the 30x12 duct won't fit over Corridor 1",
-    docIds: ["s-301", "m-401", "a-201"],
-    issueText:
-      "Possible vertical interference over Corridor 1. The mechanical main supply duct (M-401) is 30\" x 12\" " +
+  ),
+  issueInstance(
+    "duct-clash",
+    "Duct vs. beam vs. ceiling: the 30x12 duct won't fit over Corridor 1",
+    "Possible vertical interference over Corridor 1. The mechanical main supply duct (M-401) is 30\" x 12\" " +
       "and routes above the corridor ceiling, which is set at 9'-0\" AFF (A-201). Beam B-12 crosses the same " +
       "corridor with bottom of steel at 10'-2\" AFF (S-301). Using typical above-ceiling allowances of about " +
       "2\" for duct insulation plus about 6\" for hangers and clearance on top of the 12\" duct depth, please " +
       "confirm whether the duct can pass beneath Beam B-12 while holding the 9'-0\" ceiling, and advise direction " +
       "if it cannot.",
-    fallbackDraft: `RFI No.: 002
+    ["s-301", "m-401", "a-201"],
+    `RFI No.: 002
 Date: [today]
 To: Lakeview Medical Office - Architect / Mechanical Engineer / Structural Engineer of Record
 From: Cascade Ridge Construction
@@ -144,18 +165,17 @@ Assumptions:
 We assumed about 2" duct insulation and about 6" for hangers and working clearance. If actual insulation or hanger details differ, the required bottom of structure will change accordingly.
 
 Draft for your review. A person reviews and sends every RFI.`,
-  },
-  {
-    id: "firestop-missing",
-    label: "Rated wall, no firestop: duct penetrates the 1-hour corridor wall at C-4",
-    docIds: ["ls-101", "m-401", "spec-0784"],
-    issueText:
-      "The 30\" x 12\" mechanical supply duct (M-401) penetrates the Corridor 1 wall at grid C-4. Per LS-101, " +
+  ),
+  issueInstance(
+    "firestop-missing",
+    "Rated wall, no firestop: duct penetrates the 1-hour corridor wall at C-4",
+    "The 30\" x 12\" mechanical supply duct (M-401) penetrates the Corridor 1 wall at grid C-4. Per LS-101, " +
       "Corridor 1 walls are 1-hour fire-rated and continuous to deck. No fire or smoke damper is shown on the " +
       "drawings at this penetration, and Spec 07 84 00 requires tested firestop systems at rated penetrations but " +
       "names no specific system. Please confirm whether a fire-smoke damper is required and provide the specific " +
       "tested firestop system or detail for this penetration.",
-    fallbackDraft: `RFI No.: 003
+    ["ls-101", "m-401", "spec-0784"],
+    `RFI No.: 003
 Date: [today]
 To: Lakeview Medical Office - Architect / Mechanical Engineer
 From: Cascade Ridge Construction
@@ -180,12 +200,10 @@ Assumptions:
 We assumed the wall remains 1-hour rated at grid C-4 and that no damper or firestop detail exists elsewhere in the documents that we have not been issued.
 
 Draft for your review. A person reviews and sends every RFI.`,
-  },
+  ),
 ];
 
-// Generic fallback for a free-typed issue (the encore), used only if the live
-// call fails and there is no issue-specific saved example.
-export const FREE_TEXT_FALLBACK = `RFI No.: [next]
+const FREE_TEXT_FALLBACK = `RFI No.: [next]
 Date: [today]
 To: Lakeview Medical Office - Architect / Engineer of Record
 From: Cascade Ridge Construction
@@ -211,10 +229,9 @@ Draft for your review. A person reviews and sends every RFI.
 (Live AI was unavailable, so this is a saved example template. A person reviews and sends every RFI.)`;
 
 // -----------------------------------------------------------------------------
-// The prompt (function sends this to Claude, with the brackets filled).
-// Kept verbatim from the build content; do not reword.
+// Prompt assembly (pure, testable). Verbatim template from the original app.
 // -----------------------------------------------------------------------------
-export const PROMPT_TEMPLATE = `You're helping me draft a professional RFI for {{PROJECT}} ({{GC}}).
+const PROMPT_TEMPLATE = `You're helping me draft a professional RFI for {{PROJECT}} ({{GC}}).
 
 The issue: {{ISSUE}}
 Relevant documents:
@@ -225,48 +242,82 @@ Draft the RFI in our format. Cite the documents, ask one clear question, and pro
 suggested resolution. Flag any assumption you had to make. Keep it concise and professional.
 Return a draft only; a person will review and send it.`;
 
-// -----------------------------------------------------------------------------
-// Helpers (shared by browser + function)
-// -----------------------------------------------------------------------------
-
-// Return the doc objects for an issue id, in order. Free-text gets all docs.
-export function docsForIssue(issueId) {
-  const issue = ISSUES.find((i) => i.id === issueId);
-  const ids = issue ? issue.docIds : Object.keys(SHARED_DOCS);
-  return ids.map((id) => ({ id, ...SHARED_DOCS[id] }));
-}
-
-// Render the baked document snippets as the block injected into the prompt.
-export function renderDocsBlock(docs) {
+function renderRefDocs(docs: SourceDoc[]): string {
   return docs.map((d) => `- ${d.title}\n${d.body}`).join("\n\n");
 }
 
-// Build the exact populated prompt shown in the middle panel and sent to Claude.
-export function buildPrompt(issueText, docs) {
-  return PROMPT_TEMPLATE.replace("{{PROJECT}}", PROJECT.name)
-    .replace("{{GC}}", PROJECT.gc)
-    .replace("{{ISSUE}}", issueText.trim())
-    .replace("{{DOCS}}", renderDocsBlock(docs))
+export function buildRfiPrompt(input: PromptInput): string {
+  const { project } = input;
+  let issue: string;
+  let docs: SourceDoc[];
+  if (input.freeText && input.freeText.trim()) {
+    issue = input.freeText.trim();
+    docs = ALL_REFERENCE_DOCS;
+  } else if (input.instance) {
+    const issueDoc = input.instance.documents.find((d) => d.kind === "issue");
+    issue = issueDoc?.body ?? input.instance.label;
+    docs = input.instance.documents.filter((d) => d.kind !== "issue");
+  } else {
+    issue = "";
+    docs = [];
+  }
+  return PROMPT_TEMPLATE.replace("{{PROJECT}}", project.name)
+    .replace("{{GC}}", project.gc)
+    .replace("{{ISSUE}}", issue.trim())
+    .replace("{{DOCS}}", renderRefDocs(docs))
     .replace("{{FORMAT}}", RFI_FORMAT);
 }
 
-// Resolve issue text + docs + fallback for either an issueId or free text.
-export function resolveCase({ issueId, freeText }) {
-  if (freeText && freeText.trim()) {
-    const docs = docsForIssue(null);
-    return {
-      issueText: freeText.trim(),
-      docs,
-      fallbackDraft: FREE_TEXT_FALLBACK,
-      isFreeText: true,
-    };
-  }
-  const issue = ISSUES.find((i) => i.id === issueId);
-  if (!issue) return null;
-  return {
-    issueText: issue.issueText,
-    docs: docsForIssue(issue.id),
-    fallbackDraft: issue.fallbackDraft,
-    isFreeText: false,
-  };
-}
+const SYSTEM_PROMPT = `You are a careful construction-document assistant helping a general contractor draft an RFI (Request for Information).
+
+Non-negotiable rules:
+- You produce a DRAFT only, for a human to review and send. A person reviews and sends every RFI.
+- Use ONLY the documents and facts provided in the message. Never invent document numbers, dimensions, systems, names, dates, or requirements. If a fact is missing, say so or mark it as a bracketed placeholder.
+- Cite the specific documents you rely on by their title or number (for example "Spec 03 30 00, 2.3.A" or "Drawing S-301").
+- Ask exactly one clear question.
+- Propose a concrete suggested resolution.
+- Explicitly flag every assumption you had to make.
+- Note the cost and schedule impact, and which trades are affected.
+
+When the issue involves a dimensional, vertical, or clearance fit, you MUST show the arithmetic, not summarize it:
+- List each component on its own line (ceiling height, duct depth, insulation allowance, hanger and clearance allowance).
+- Add them to a single required figure (for example, required bottom of structure above the ceiling).
+- Compare that required figure against the available figure from the drawings.
+- State the numeric shortfall or surplus in inches. Do not write "does not fit" without the supporting numbers.
+- Carry any stated allowances exactly as given and label them as assumptions.
+
+Style:
+- Output the RFI in the requested format with clear labeled sections.
+- Concise and professional. No marketing language.
+- Do not use em dashes or en dashes anywhere. Use a comma, a period, parentheses, or a plain hyphen instead. Plain hyphens are fine inside terms like 10'-2", 30" x 12", 1-hour, and B-12.
+- End the draft with the line: "Draft for your review. A person reviews and sends every RFI."`;
+
+// -----------------------------------------------------------------------------
+// The use case
+// -----------------------------------------------------------------------------
+export const rfiDraft: UseCase = {
+  id: "rfi-draft",
+  label: "RFI draft",
+  outputType: "RFI",
+  project: CASCADE_RIDGE,
+  instances: INSTANCES,
+  systemPrompt: SYSTEM_PROMPT,
+  buildPrompt: buildRfiPrompt,
+  reviewChecklist: [
+    "References are right.",
+    "One clear question.",
+    "Nothing invented.",
+    "Cost and schedule noted.",
+    "I checked the cited references and confirmed the question and suggested resolution.",
+  ],
+  approval: {
+    label: "Reviewed and approved by",
+    provenanceNote: "approved by the named reviewer before issue",
+  },
+  standingLine: "A person reviews and sends every RFI.",
+  freeTextFallback: FREE_TEXT_FALLBACK,
+  runLabel: "Draft the RFI",
+  inputNoun: "issue",
+  freeTextPlaceholder: "Describe the issue and reference the relevant documents, then draft the RFI...",
+  roiAppKey: "rfi",
+};

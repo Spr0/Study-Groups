@@ -230,11 +230,11 @@ export const submittalReview: UseCase = {
     "Every deviation is real, not invented.",
     "Missing items are flagged, not assumed compliant.",
     "The disposition matches the comments.",
-    "Reviewer name added before issue.",
+    "I confirmed each deviation against the spec section and that no compliance is claimed the spec does not support.",
   ],
   approval: {
     label: "Reviewed and approved by",
-    provenanceNote: "drafted with AI assistance",
+    provenanceNote: "approved by the named reviewer before issue",
   },
   standingLine: "A person reviews and sends every submittal response.",
   freeTextFallback: FREE_TEXT_FALLBACK,
@@ -242,4 +242,5 @@ export const submittalReview: UseCase = {
   inputNoun: "submittal",
   freeTextPlaceholder:
     "Paste the submitted product data and the relevant spec clauses, then draft the review...",
+  roiAppKey: "submittal",
 };
