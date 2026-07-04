@@ -1,8 +1,47 @@
-/* App chrome for the RFI app. Brand tokens + component styles come from
-   @sg/core/styles.css (imported first in main.ts). */
+/* App chrome for the RFI app - "Study Groups" workshop reskin.
+   Implements the RFI Drafter.dc.html design: cream page, navy #14208A,
+   red #C4341F labels, Helvetica Neue + IBM Plex Mono, flat 3px corners,
+   white cards. Brand tokens + component styles come from @sg/core/styles.css
+   (imported first in main.ts); everything below overrides them for this app. */
+
+:root {
+  --royal: #14208a;
+  --brick: #c4341f;
+  --ink: #171717;
+  --panel: #ffffff;
+  --hair: #dad5c7;
+
+  --cream: #f4f1eb;
+  --body-text: #3a372f;
+  --muted-text: #8c8775;
+  --subtle-text: #a19c8c;
+  --disabled-bg: #b7b2a2;
+  --skeleton: #edeae1;
+  --roi-bg: #ebeef5;
+  --roi-hair: #d7d2c2;
+
+  --display: "Helvetica Neue", Arial, system-ui, sans-serif;
+  --body: "Helvetica Neue", Arial, system-ui, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "SF Mono", monospace;
+}
+
+@keyframes sg-pulse {
+  0%,
+  100% {
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 0.9;
+  }
+}
 
 * {
   box-sizing: border-box;
+}
+/* Core sets display:flex on some [hidden] containers (e.g. .draft-toolbar),
+   which defeats the HTML hidden attribute. Restore its meaning. */
+[hidden] {
+  display: none !important;
 }
 html,
 body {
@@ -12,8 +51,9 @@ body {
 body {
   font-family: var(--body);
   color: var(--ink);
-  background: var(--white);
+  background: var(--cream);
   line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
 }
 
 .skip-link {
@@ -21,10 +61,9 @@ body {
   left: -9999px;
   top: 0;
   background: var(--royal);
-  color: var(--white);
+  color: #fff;
   padding: 10px 14px;
   z-index: 10;
-  font-family: var(--display);
   font-weight: 700;
 }
 .skip-link:focus {
@@ -34,13 +73,14 @@ body {
 
 /* ---- Masthead ---- */
 .masthead {
-  background: var(--royal);
-  color: var(--white);
+  background: transparent;
+  color: var(--ink);
+  border-bottom: 1.5px solid var(--royal);
 }
 .masthead-inner {
-  max-width: 1280px;
+  max-width: 1320px;
   margin: 0 auto;
-  padding: 14px 24px;
+  padding: 22px 40px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -52,76 +92,533 @@ body {
   gap: 12px;
 }
 .sg-mark {
-  font-family: var(--display);
-  font-weight: 800;
-  font-size: 20px;
-  letter-spacing: 0.04em;
-  background: var(--white);
-  color: var(--royal);
-  padding: 2px 8px;
-  border-radius: 3px;
+  width: 34px;
+  height: 34px;
+  border-radius: 4px;
+  background: var(--royal);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 14px;
+  letter-spacing: -0.02em;
+  flex-shrink: 0;
+  padding: 0;
 }
 .sg-word {
-  font-family: var(--display);
   font-weight: 700;
-  font-size: 20px;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  font-size: 17px;
+  color: var(--royal);
+  letter-spacing: -0.01em;
+  text-transform: none;
 }
 .masthead-purpose {
-  font-family: var(--display);
-  font-weight: 600;
-  font-size: 14px;
+  text-align: right;
+  line-height: 1.5;
+  flex-shrink: 0;
+  opacity: 1;
+}
+.purpose-line {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted-text);
+  white-space: nowrap;
+}
+.purpose-session {
+  font-size: 10.5px;
+  font-weight: 400;
   letter-spacing: 0.05em;
   text-transform: uppercase;
-  opacity: 0.92;
-  text-align: right;
+  color: var(--subtle-text);
+  white-space: nowrap;
+  margin-top: 4px;
 }
 
 /* ---- Layout ---- */
 .wrap {
-  max-width: 1280px;
+  max-width: 1320px;
   margin: 0 auto;
-  padding: 28px 24px 64px;
+  padding: 44px 40px 40px;
+}
+.intro .eyebrow {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--brick);
+  margin: 0 0 10px;
 }
 .intro h1 {
-  font-family: var(--display);
   font-weight: 800;
-  font-size: clamp(26px, 3vw, 40px);
+  font-size: clamp(30px, 4vw, 42px);
+  letter-spacing: -0.02em;
   line-height: 1.05;
-  margin: 8px 0 6px;
+  margin: 0 0 16px;
 }
 .lede {
-  font-size: 18px;
-  max-width: 62ch;
+  max-width: 660px;
+  font-size: 16px;
+  line-height: 1.6;
+  color: var(--body-text);
+  margin: 0 0 30px;
+}
+
+/* ---- Panels (over @sg/core) ---- */
+.panels {
+  grid-template-columns: 1.15fr 1fr 1fr;
+  gap: 24px;
+}
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--hair);
+  border-radius: 3px;
+  padding: 24px;
+}
+.panel-head {
+  gap: 10px;
+  margin-bottom: 20px;
+}
+/* The hairline and the right-hand tag from the design, without touching the
+   core template: pseudo-elements ordered after the real children. */
+.panel-head::before {
+  content: "";
+  order: 1;
+  flex: 1;
+  min-width: 12px;
+  height: 1px;
+  background: var(--hair);
+}
+.panel-head::after {
+  order: 2;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--subtle-text);
+  white-space: nowrap;
+}
+section[aria-labelledby="inputs-h"] .panel-head::after {
+  content: "The Foundation";
+}
+section[aria-labelledby="prompt-h"] .panel-head::after {
+  content: "The Mechanism";
+}
+.panel-num {
+  width: 26px;
+  height: 26px;
+  font-size: 12px;
+  font-weight: 700;
+}
+.panel h2 {
+  font-weight: 800;
+  font-size: 14px;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+section[aria-labelledby="draft-h"] .panel h2,
+section[aria-labelledby="draft-h"] h2 {
+  font-size: 12.5px;
+  letter-spacing: 0.03em;
+}
+.panel-note {
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--muted-text);
+  margin: 0 0 16px;
+}
+
+/* ---- Form controls ---- */
+.field-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--brick);
+  margin: 16px 0 8px;
+}
+.select,
+.free-text,
+.signer-name,
+.signer-role {
+  font-family: inherit;
+  font-size: 14px;
+  color: var(--ink);
+  background: #fff;
+  border: 1px solid var(--hair);
+  border-radius: 3px;
+  padding: 10px 12px;
+}
+.or-row {
+  margin: 22px 0 2px;
+  font-size: 12px;
+  color: var(--muted-text);
+}
+.or-row::before,
+.or-row::after {
+  background: var(--hair);
+}
+.controls {
+  margin: 18px 0 8px;
+  gap: 14px;
+}
+.offline-toggle {
+  font-size: 13px;
+  color: var(--body-text);
+}
+.offline-toggle input {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--royal);
+}
+
+/* ---- Buttons ---- */
+.btn {
+  font-family: inherit;
+  font-weight: 700;
+  font-size: 13px;
+  letter-spacing: 0.04em;
+  border-radius: 3px;
+  padding: 12px 22px;
+  transition:
+    opacity 0.15s ease,
+    background 0.15s ease;
+}
+.btn:disabled {
+  background: var(--disabled-bg);
+  color: #fff;
+  opacity: 1;
+}
+.btn-primary {
+  background: var(--royal);
+}
+.btn-accept {
+  background: var(--brick);
+}
+.btn-copy {
+  background: #fff;
+  color: var(--royal);
+  border: 1px solid var(--royal);
+}
+.btn-copy:disabled {
+  border-color: var(--disabled-bg);
+}
+.btn-link {
+  font-family: inherit;
+  font-weight: 700;
+  font-size: 11px;
+  letter-spacing: 0.05em;
+  color: var(--royal);
+  background: #fff;
+  border: 1px solid var(--royal);
+  border-radius: 3px;
+  padding: 5px 14px;
+}
+.btn-link:hover {
+  background: var(--cream);
+}
+
+/* ---- Docs + subheads ---- */
+.subhead {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 800;
+  font-size: 12px;
+  letter-spacing: 0.05em;
+  color: var(--ink);
+  margin: 24px 0 14px;
+  padding-bottom: 0;
+  border-bottom: none;
+}
+.subhead::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--hair);
+}
+.docs .doc {
+  background: #fff;
+  border: 1px solid var(--hair);
+  border-left: 3px solid var(--royal);
+  border-radius: 3px;
+}
+.doc-title {
+  color: var(--royal);
+  font-size: 12px;
+}
+.doc-body {
+  font-size: 12px;
+  color: var(--body-text);
+}
+.instance-text {
+  font-size: 13px;
+  line-height: 1.5;
+  border: 1px solid var(--hair);
+  border-radius: 3px;
+  padding: 12px;
+  background: #fff;
+}
+.muted {
+  color: var(--muted-text);
+}
+
+/* ---- Prompt panel: white with a navy frame, per the design ---- */
+.prompt-view {
+  background: #fff;
+  color: var(--ink);
+  border: 1.5px solid var(--royal);
+  border-radius: 3px;
+  font-size: 12.5px;
+  line-height: 1.7;
+  padding: 16px;
+}
+.prompt-view.muted {
+  color: var(--muted-text);
+  border-color: var(--hair);
+}
+
+/* ---- Draft panel ---- */
+.saved-banner {
+  background: #f7ece9;
+  border: 1px solid var(--brick);
+  color: var(--body-text);
+  border-radius: 3px;
+  font-size: 13px;
+  line-height: 1.6;
+}
+.draft-status {
+  font-size: 13px;
+}
+/* Drafting: pulsing skeleton lines above the status text, per the design. */
+.draft-status.working {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  color: var(--muted-text);
+  font-weight: 400;
+  font-style: italic;
+  font-size: 12px;
+}
+.draft-status.working::before,
+.draft-status.working::after {
+  content: "";
+  order: -1;
+  height: 12px;
+  background: var(--skeleton);
+  border-radius: 2px;
+  animation: sg-pulse 1.1s ease-in-out infinite;
+}
+.draft-status.working::before {
+  width: 90%;
+}
+.draft-status.working::after {
+  width: 75%;
+}
+.edit-hint {
+  font-size: 12px;
+}
+.draft-rendered {
+  border: 1px solid var(--hair);
+  border-radius: 3px;
+  padding: 16px;
+  font-family: inherit;
+  font-size: 13px;
+  line-height: 1.6;
+}
+.draft-rendered .md-h {
+  font-family: inherit;
+  color: var(--royal);
+}
+.draft-rendered h3.md-h {
+  font-size: 15px;
+}
+.draft-rendered h4.md-h {
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.draft-rendered .md-hr {
+  border-top: 1px solid var(--skeleton);
+}
+.draft-rendered .md-table th,
+.draft-rendered .md-table td {
+  border-color: var(--skeleton);
+}
+.draft-rendered .md-table th {
+  background: var(--cream);
+  font-family: inherit;
+}
+.draft-rendered code {
+  background: var(--cream);
+  font-size: 12px;
+}
+.draft-rendered .approval {
+  border-top: 2px solid var(--royal);
+}
+.draft-text {
+  border: 1px solid var(--hair);
+  border-radius: 3px;
+  font-size: 12.5px;
+}
+.standing-line {
+  font-family: inherit;
+  font-size: 11px;
+  letter-spacing: 0.05em;
+  color: var(--brick);
+  margin: 20px 0 0;
+}
+.standing-line::before {
+  content: "\25AA\00A0\00A0"; /* small red square marker, per the design */
+}
+
+/* ---- Review checklist + approval ---- */
+.review-block {
+  border-top: 1px solid var(--hair);
+  margin-top: 20px;
+}
+.check {
+  font-size: 13px;
+  color: var(--body-text);
+}
+.check input {
+  accent-color: var(--royal);
+}
+.copy-note {
+  color: var(--royal);
+}
+
+/* ---- ROI panel ---- */
+.roi-panel {
+  background: var(--roi-bg);
+  border-color: var(--roi-hair);
+  padding: 32px;
+}
+.roi-panel .panel-head::before,
+.roi-panel .panel-head::after {
+  content: none;
+}
+.roi-panel .panel-head {
+  margin-bottom: 8px;
+}
+.roi-panel h2 {
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  text-transform: none;
+  white-space: normal;
+}
+.roi-headline {
+  font-size: 14px;
+  font-style: italic;
+  line-height: 1.6;
+  color: #55523f;
+  max-width: 600px;
   margin: 0 0 24px;
-  color: #3a3d44;
+}
+.roi-score-eq {
+  font-family: inherit;
+}
+.roi-score-num {
+  font-family: inherit;
+  color: var(--royal);
+}
+.roi-rank {
+  font-family: inherit;
+  color: var(--brick);
+}
+.roi-inputs {
+  gap: 20px;
+  margin-bottom: 24px;
+}
+.roi-inputs .field-label {
+  margin: 0;
+}
+.roi-inputs input {
+  font-family: inherit;
+  font-size: 14px;
+  background: #fff;
+  border: 1px solid var(--roi-hair);
+  border-radius: 3px;
+  padding: 10px 12px;
+}
+.roi-note {
+  font-size: 11px;
+  color: var(--muted-text);
+}
+.roi-stats {
+  gap: 20px;
+}
+.roi-stat {
+  background: #fff;
+  border: 1px solid var(--roi-hair);
+  border-radius: 3px;
+  padding: 16px;
+}
+.roi-stat-hero {
+  border: 1.5px solid var(--royal);
+  background: #fff;
+}
+.roi-stat-label {
+  font-family: inherit;
+  color: var(--brick);
+  margin-bottom: 8px;
+}
+.roi-stat-value {
+  font-family: inherit;
+  font-size: 26px;
+  font-weight: 800;
+  color: var(--royal);
 }
 
 /* ---- Footer ---- */
 .footer {
   border-top: 1px solid var(--hair);
-  background: var(--white);
+  background: transparent;
 }
 .footer-inner {
-  max-width: 1280px;
+  max-width: 1320px;
   margin: 0 auto;
-  padding: 18px 24px;
+  padding: 22px 40px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.footer-line {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--ink);
+}
+.footer-accent {
+  color: var(--brick);
 }
 .footer-word {
-  font-family: var(--display);
+  font-size: 11px;
   font-weight: 700;
-  font-size: 14px;
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--royal);
 }
 
+/* ---- Responsive: stack for projector / phone ---- */
 @media (max-width: 920px) {
+  /* Re-assert core's stacking: the 1.15fr column override above would
+     otherwise win the cascade over core's own 920px rule. */
+  .panels {
+    grid-template-columns: 1fr;
+  }
+  .masthead-inner,
+  .wrap,
+  .footer-inner {
+    padding-left: 24px;
+    padding-right: 24px;
+  }
   .masthead-inner {
     flex-direction: column;
     align-items: flex-start;
-    gap: 4px;
+    gap: 10px;
   }
   .masthead-purpose {
     text-align: left;
