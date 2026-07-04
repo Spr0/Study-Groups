@@ -1,21 +1,24 @@
 # Netlify config for the SUBMITTAL app's site (monorepo package).
 #
-# This app is its own Netlify site. Use Netlify's monorepo support: set the
-# site's package directory to `demo/apps/submittal` (CLI: `--filter @sg/submittal`).
-# Netlify installs dependencies at the workspace root (so the shared @sg/core and
-# @sg/sample-data packages resolve), then builds only this app. All paths below are
-# relative to this package directory.
+# This app is its own Netlify site using Netlify's monorepo support: the
+# site's base directory is `demo` (the npm workspace root, so @sg/core and
+# @sg/sample-data install and resolve) and its package directory is
+# `demo/apps/submittal`. Netlify reads THIS file from the package directory
+# and runs the build command IN the package directory, but resolves the
+# publish and functions paths below against the BASE directory (`demo`).
+# That quirk is why they are written as `apps/submittal/...` rather than
+# plain `dist`.
 #
-# The RFI app is a separate Netlify site with package directory `demo/apps/rfi`;
-# it is unaffected by this file.
+# The RFI app is a separate Netlify site with package directory
+# `demo/apps/rfi`; it is unaffected by this file.
 
 [build]
   command = "npm run build"
-  publish = "dist"
+  publish = "apps/submittal/dist"
 
 [build.environment]
   NODE_VERSION = "20"
 
 [functions]
-  directory = "netlify/functions"
+  directory = "apps/submittal/netlify/functions"
   node_bundler = "esbuild"
