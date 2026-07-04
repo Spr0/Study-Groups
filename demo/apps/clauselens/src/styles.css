@@ -1,9 +1,286 @@
-/* App-specific overrides for the ClauseLens app.
-   The entire Study Groups skin (tokens, review-engine components, and the
-   masthead/hero/footer chrome classes) lives in @sg/core/styles.css,
-   imported first in main.ts. Below: only the legal-disclaimer block, which
-   is unique to this app (it reviews contracts). */
+/* ClauseLens-specific layout and components. Contract review deliberately
+   diverges from the RFI/submittal three-panel flow: single-column input with a
+   PDF drop, then a results view where "Raise before signing" dominates and
+   each clause is a card with Explain + Verified. Shares the design tokens and
+   base components from @sg/core/styles.css (imported first in main.ts). */
 
+/* ---- Input view ---- */
+.cl-input {
+  max-width: 720px;
+  background: var(--panel);
+  border: 1px solid var(--hair);
+  border-radius: 3px;
+  padding: 24px;
+}
+.cl-input .field-label:first-child {
+  margin-top: 0;
+}
+.cl-drop {
+  border: 1.5px dashed var(--hair);
+  border-radius: 3px;
+  background: #fff;
+  padding: 28px 20px;
+  text-align: center;
+  cursor: pointer;
+  transition:
+    border-color 0.15s ease,
+    background 0.15s ease;
+}
+.cl-drop.is-over,
+.cl-drop:hover {
+  border-color: var(--royal);
+  background: #f7f8fc;
+}
+.cl-drop-icon {
+  font-size: 22px;
+  color: var(--royal);
+  margin-bottom: 6px;
+}
+.cl-drop-main {
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--ink);
+}
+.cl-drop-sub {
+  font-size: 12px;
+  color: var(--muted-text);
+  margin-top: 4px;
+}
+.cl-file-note {
+  margin-top: 10px;
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--royal);
+}
+.cl-input .saved-banner {
+  margin-top: 12px;
+  margin-bottom: 0;
+}
+.cl-prompt-peek {
+  margin-top: 20px;
+}
+.cl-prompt-peek summary {
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--royal);
+}
+.cl-prompt-peek[open] summary {
+  margin-bottom: 10px;
+}
+.cl-prompt-peek .prompt-view {
+  max-height: 320px;
+}
+
+/* ---- Results view ---- */
+.cl-results {
+  max-width: 860px;
+}
+.cl-results-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+.cl-results-title {
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  margin: 0;
+}
+.cl-source {
+  font-size: 12px;
+  color: var(--muted-text);
+  margin-top: 2px;
+}
+
+/* ---- Raise before signing: the dominant element ---- */
+.cl-raise {
+  background: #f7ece9;
+  border: 2px solid var(--brick);
+  border-radius: 3px;
+  padding: 24px 28px;
+  margin: 0 0 28px;
+}
+.cl-raise-head {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.cl-raise-kicker {
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--brick);
+  margin: 0;
+}
+.cl-raise-count {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #fff;
+  background: var(--brick);
+  border-radius: 999px;
+  padding: 3px 10px;
+}
+.cl-raise-list {
+  margin: 0;
+  padding-left: 22px;
+}
+.cl-raise-list li {
+  font-size: 15px;
+  line-height: 1.65;
+  color: var(--body-text);
+  margin-bottom: 10px;
+}
+.cl-raise-list li.cl-raise-first {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--ink);
+}
+.cl-raise-list li.cl-raise-none {
+  list-style: none;
+  margin-left: -22px;
+  color: var(--muted-text);
+  font-style: italic;
+}
+
+.cl-verify-hint {
+  font-size: 12px;
+  font-style: italic;
+  color: var(--muted-text);
+  margin: 0 0 14px;
+}
+
+/* ---- Clause cards (the pre-platform display) ---- */
+.cl-card {
+  background: #fff;
+  border: 1px solid var(--hair);
+  border-left: 3px solid var(--royal);
+  border-radius: 3px;
+  padding: 16px 18px;
+  margin-bottom: 12px;
+}
+.cl-card--missing {
+  border-left-color: var(--brick);
+}
+.cl-card-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+.cl-card-name {
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink);
+}
+.cl-chip {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 3px 10px;
+  border-radius: 999px;
+  white-space: nowrap;
+  color: #fff;
+}
+.cl-chip--found {
+  background: var(--royal);
+}
+.cl-chip--missing {
+  background: var(--brick);
+}
+.cl-spacer {
+  flex: 1;
+}
+.cl-verify {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--body-text);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.cl-verify input {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--royal);
+}
+.cl-quote {
+  font-family: var(--mono);
+  font-size: 13px;
+  line-height: 1.65;
+  color: var(--ink);
+  background: var(--cream);
+  border: 1px solid var(--hair);
+  border-radius: 3px;
+  padding: 12px 14px;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.cl-quote--missing {
+  color: var(--muted-text);
+  font-style: italic;
+}
+.cl-plain {
+  margin-top: 10px;
+  font-size: 14px;
+  line-height: 1.65;
+  color: var(--body-text);
+}
+.cl-plain-tag {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--brick);
+  margin-right: 8px;
+}
+.cl-explain {
+  margin-top: 12px;
+}
+.cl-explain-body {
+  margin-top: 10px;
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--body-text);
+  background: #f7f8fc;
+  border: 1px solid var(--hair);
+  border-left: 3px solid var(--royal);
+  border-radius: 3px;
+  padding: 12px 14px;
+}
+
+/* ---- Sign-off ---- */
+.cl-signoff {
+  margin-top: 28px;
+  border-top: 1px solid var(--hair);
+  padding-top: 6px;
+}
+.cl-approved {
+  margin: 14px 0 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--royal);
+}
+.cl-results .roi-panel {
+  margin-top: 28px;
+}
+
+/* ---- Legal disclaimer (below the app) ---- */
 .app-disclaimer {
   max-width: 660px;
   margin-top: 40px;
@@ -26,4 +303,10 @@
 }
 .app-disclaimer .privacy {
   color: var(--muted-text);
+}
+
+@media (max-width: 920px) {
+  .cl-card-head {
+    flex-wrap: wrap;
+  }
 }
