@@ -1,0 +1,21 @@
+# Netlify config for the CLAUSELENS app's site (monorepo package).
+#
+# This app is its own Netlify site using Netlify's monorepo support: the
+# site's base directory is `demo` (the npm workspace root, so @sg/core and
+# @sg/sample-data install and resolve) and its package directory is
+# `demo/apps/clauselens`. Netlify reads THIS file from the package directory
+# and runs the build command IN the package directory, but resolves the
+# publish and functions paths below against the BASE directory (`demo`).
+# That quirk is why they are written as `apps/clauselens/...` rather than
+# plain `dist`.
+
+[build]
+  command = "npm run build"
+  publish = "apps/clauselens/dist"
+
+[build.environment]
+  NODE_VERSION = "20"
+
+[functions]
+  directory = "apps/clauselens/netlify/functions"
+  node_bundler = "esbuild"

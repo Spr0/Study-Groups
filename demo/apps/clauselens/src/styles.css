@@ -1,0 +1,29 @@
+/* App-specific overrides for the ClauseLens app.
+   The entire Study Groups skin (tokens, review-engine components, and the
+   masthead/hero/footer chrome classes) lives in @sg/core/styles.css,
+   imported first in main.ts. Below: only the legal-disclaimer block, which
+   is unique to this app (it reviews contracts). */
+
+.app-disclaimer {
+  max-width: 660px;
+  margin-top: 40px;
+  border-top: 1px solid var(--hair);
+  padding-top: 20px;
+  font-size: 13px;
+  line-height: 1.8;
+  color: var(--body-text);
+}
+.app-disclaimer h2 {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--brick);
+  margin: 0 0 8px;
+}
+.app-disclaimer p {
+  margin: 0 0 8px;
+}
+.app-disclaimer .privacy {
+  color: var(--muted-text);
+}

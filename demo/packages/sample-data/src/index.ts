@@ -5,3 +5,4 @@
 export { CASCADE_RIDGE } from "./project";
 export { submittalReview, buildSubmittalPrompt } from "./submittal";
 export { rfiDraft, buildRfiPrompt } from "./rfi";
+export { clauseReview, buildClausePrompt } from "./clauses";
