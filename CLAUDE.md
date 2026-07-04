@@ -59,8 +59,13 @@ When deploying by hand (rare now): do a `?draft=true` API deploy or
 
 The canonical skin is on the RFI app, implemented from the Claude Design
 handoff `RFI Drafter.dc.html` ("Logo redesign for RFI drafter" project).
-Source of truth: `demo/apps/rfi/index.html` + `demo/apps/rfi/src/styles.css`
-(token overrides on top of core styles).
+Source of truth: `packages/core/src/styles.css`. The ENTIRE skin lives there
+(tokens, review-engine components, and the masthead/hero/footer chrome
+classes used by each app's index.html), including the `[hidden]` display
+reset and the sub-920px stacking. An app's own `src/styles.css` is for true
+app-specific overrides only (see `apps/clauselens/src/styles.css` for the
+one real example: the legal-disclaimer block). All three apps render this
+skin as of `1febcd2` / `dd64aeb`.
 
 Tokens: navy `#14208A` (brand), red `#C4341F` (labels/accents), page cream
 `#F4F1EB`, hairline `#DAD5C7`, ink `#171717`, muted `#8C8775`, ROI panel
@@ -68,38 +73,35 @@ Tokens: navy `#14208A` (brand), red `#C4341F` (labels/accents), page cream
 + IBM Plex Mono (Google Fonts, 400/500/700). Flat 3px radii, white cards,
 uppercase micro-labels.
 
-Two behavior fixes live in the RFI app CSS and belong in ANY app using this
-skin (or better, in core):
-1. `[hidden] { display: none !important; }` - core sets `display: flex` on
-   `.draft-toolbar`, defeating the HTML hidden attribute.
-2. Re-assert `.panels { grid-template-columns: 1fr }` inside the 920px media
-   query if the app overrides the desktop grid, or mobile never stacks.
-
-**Open decision (Scott):** if all apps adopt this skin, move the tokens and
-fixes into `packages/core/src/styles.css` once and restyle submittal, rather
-than copying the override file per app.
+Markdown convention for fallback drafts and model format instructions: the
+engine's renderer maps `#` to h3 and `##` to h4. Use `#` for the document
+title and `##` for sections; deeper levels render unstyled.
 
 ## Work queue
 
-1. **Migrate ClauseLens into the platform** as `demo/apps/clauselens` on
-   `@sg/core` (template: commit `eddade2`, which migrated RFI onto core).
-   ClauseLens repo: `~/Downloads/ClauseLens_repo` (main @ `8151eca`, already
-   conforms to the core sign-off block); site `clauselens.netlify.app`
-   (`7341ebf2-7d36-4025-8a91-b8b74763a5d1`), currently git-linked to
-   `Spr0/ClauseLens`. Diff its features against core first (e.g. TXT upload,
-   raise list); list gaps for Scott before porting. App shell from `apps/rfi`
-   so the new skin comes along. Repoint the existing Netlify site to this
-   repo (base `demo`, package `demo/apps/clauselens`, branch `main`). Only
-   after live verification: archive `Spr0/ClauseLens` (Scott confirms),
-   delete `~/Downloads/ClauseLens_repo` and the loose non-git copy
-   `~/Downloads/ClauseLens`.
+1. **Finish the ClauseLens cutover.** The migrated app (`demo/apps/clauselens`
+   on `@sg/core`, commit `dd64aeb`) is live at clauselens.netlify.app via a
+   manual CLI deploy. Remaining:
+   - Relink the `clauselens` site (`7341ebf2-7d36-4025-8a91-b8b74763a5d1`)
+     from `Spr0/ClauseLens` to `Spr0/Study-Groups`: base `demo`, package
+     `demo/apps/clauselens`, branch `main` (Netlify UI; keep
+     `ANTHROPIC_API_KEY` / `ANTHROPIC_MODEL` env vars). Until then, pushes to
+     main do NOT redeploy this app.
+   - Decide with Scott on the features deferred from the standalone app:
+     PDF/DOCX/TXT upload with client-side extraction, per-clause inline edit,
+     and the per-clause explain call. If upload is wanted, add it to core
+     behind a UseCase flag so every app can use it.
+   - Only after Scott confirms the cutover sticks: archive `Spr0/ClauseLens`,
+     delete `~/Downloads/ClauseLens_repo` and the loose non-git copy
+     `~/Downloads/ClauseLens`. Rollback until then: restore the site's prior
+     production deploy in the Netlify UI (deploys are immutable).
 2. **Two new apps** per `demo/README.md` "How to add a use case": content
-   module + tests in sample-data, app copied from `apps/rfi`, site per the
-   checklist above. Confirm use cases with Scott (Contract Review has a
-   worked example in the workshop kit).
+   module + tests in sample-data, app copied from `apps/clauselens` (thinnest
+   current example), site per the checklist above. Confirm use cases with
+   Scott (Contract Review has a worked example in the workshop kit).
 3. **Docs**: `demo/README.md` is stale - it still describes the deleted
    `demo/app` and the CLI-only deploy story; update it to the git-linked
-   monorepo reality and add ClauseLens when it lands.
+   monorepo reality, the skin-in-core structure, and the three apps.
 4. **Leftover cleanup**: move `~/Downloads/pacing-iq` to `~/Projects/PacingIQ`
    after removing its last worktree (`.claude/worktrees/stoic-cray-964e9f`,
    in use by the 2026-07-04 session; its branch
