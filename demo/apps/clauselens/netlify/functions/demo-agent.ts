@@ -18,9 +18,17 @@
 // on the link triggers it.
 // =============================================================================
 import type { Config, Context } from "@netlify/functions";
-import { FIVE_CLAUSES, SAMPLE_FALLBACK_RESULT } from "@sg/sample-data";
+import {
+  fingerprintContract,
+  FIVE_CLAUSES,
+  isValidResult,
+  SAMPLE_CONTRACT_TEXT,
+  SAMPLE_FALLBACK_RESULT,
+  type ClauseResult,
+} from "@sg/sample-data";
 import {
   buildApprovalEmail,
+  buildIngestPayload,
   buildSignatoryEmail,
   buildSignoffPageHtml,
   decodePayload,
@@ -78,6 +86,78 @@ export default async (req: Request, _context: Context): Promise<Response> => {
       approvedAtIso: new Date().toISOString(),
     };
     return json({ payload });
+  }
+
+  // Watched-folder intake: the local watcher POSTs a file it saw land in the
+  // demo folder. Same review semantics as the app (live extract with a 12s
+  // timeout, vetted fallback only when the content fingerprints to the
+  // sample), then the SAME sign-off request template and sender as the in-app
+  // path. No new email path exists: the reviewer's click remains the
+  // signature, exactly as before.
+  if (url.pathname.endsWith("/ingest")) {
+    if (req.method !== "POST") return json({ error: "Method Not Allowed" }, 405);
+    let body: { fileName?: unknown; contractText?: unknown };
+    try {
+      body = (await req.json()) as typeof body;
+    } catch {
+      return json({ error: "Invalid request body." }, 400);
+    }
+    const fileName = typeof body.fileName === "string" ? body.fileName.trim() : "";
+    const contractText = typeof body.contractText === "string" ? body.contractText : "";
+    if (!fileName || !contractText.trim()) {
+      return json({ error: "fileName and contractText are required." }, 400);
+    }
+    if (contractText.length > 100_000) {
+      return json({ error: "Contract is too long." }, 413);
+    }
+
+    const armed =
+      (await fingerprintContract(contractText)) ===
+      (await fingerprintContract(SAMPLE_CONTRACT_TEXT));
+
+    let result: ClauseResult | null = null;
+    let mode: "live" | "fallback" = "live";
+    try {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 12_000);
+      const res = await fetch(`${url.origin}/api/analyze`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ mode: "extract", contractText }),
+        signal: controller.signal,
+      });
+      clearTimeout(timer);
+      const data = (await res.json().catch(() => null)) as { result?: unknown } | null;
+      if (res.ok && data && isValidResult(data.result)) result = data.result;
+    } catch {
+      result = null;
+    }
+    if (!result && armed) {
+      result = SAMPLE_FALLBACK_RESULT;
+      mode = "fallback";
+    }
+    if (!result) {
+      // Never a false table: an arbitrary file with no live review is skipped.
+      return json(
+        { error: "Could not review this contract live, and no vetted fallback exists for it." },
+        502,
+      );
+    }
+
+    const payload = buildIngestPayload(fileName, result);
+    if (!isCompletePayload(payload)) {
+      return json({ error: "Ingest payload failed the sign-off gate." }, 500);
+    }
+    const signoffUrl = `${url.origin}/api/demo/signoff?p=${encodePayload(payload)}`;
+    try {
+      await sendMail({ ...smtp(), ...buildApprovalEmail(payload, signoffUrl) });
+    } catch (err) {
+      return json(
+        { error: err instanceof Error ? err.message : "Could not reach the local inbox." },
+        502,
+      );
+    }
+    return json({ ok: true, mode, signoffUrl });
   }
 
   if (url.pathname.endsWith("/send-approval")) {
@@ -138,6 +218,7 @@ export const config: Config = {
   path: [
     "/api/demo/health",
     "/api/demo/seed-payload",
+    "/api/demo/ingest",
     "/api/demo/send-approval",
     "/api/demo/signoff",
   ],

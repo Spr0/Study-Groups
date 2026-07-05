@@ -25,6 +25,30 @@ export const FICTIONAL_SIGNATORY = {
   email: "d.whitfield@summitmechanical.test",
 };
 
+// ---- The watched-folder path (ticket: agent beat without the in-app click) ----
+// The watcher ingests a file the facilitator controls and routes it for the
+// SAME human sign-off as the in-app path: the reviewer named here receives the
+// sign-off request, and nothing is signed until that human clicks. The
+// fictional project reviewer matches the seed payload.
+export const FICTIONAL_WATCH_REVIEWER = { name: "J. Alvarez", role: "PM" };
+
+export function buildIngestPayload(
+  fileName: string,
+  result: ClauseResult,
+  now: Date = new Date(),
+): SignoffPayload {
+  return {
+    source: fileName,
+    reviewer: {
+      ...FICTIONAL_WATCH_REVIEWER,
+      date: now.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" }),
+    },
+    result,
+    verified: [...FIVE_CLAUSES],
+    approvedAtIso: now.toISOString(),
+  };
+}
+
 // ---- The sign-off payload carried in the approval link (stateless) ----
 export interface SignoffPayload {
   /** Source label shown on the review (file name or sample label). */

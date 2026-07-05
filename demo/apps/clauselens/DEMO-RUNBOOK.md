@@ -47,7 +47,27 @@ printf 'DEMO_AGENT=1\n' > .env        # turns the demo agent on, LOCAL ONLY
 6. Have `agent-demo/cascade-ridge-subcontract.pdf` visible in a Finder window,
    ready to drag.
 
-## The run
+## The run, agent version (watched folder; primary beat 3)
+
+Start the watcher (terminal 4): `node agent-demo/watch-folder.mjs`
+It watches `agent-demo/drop/` and logs one line per file.
+
+1. Drag `cascade-ridge-subcontract.pdf` into the `agent-demo/drop/` folder in
+   Finder. That is the whole input: the agent acts only on files in this one
+   folder you control.
+2. Within ~2-3 seconds the sign-off request lands in Mailpit (settle delay is
+   0.5s after the file stops growing; review is instant on the recognized
+   demo contract, 10-25s live for any other PDF). Switch to the inbox.
+3. From here the chain is identical: open the email, click "Sign off and send
+   to the signatory", the signed summary renders, the signatory email lands.
+4. Processed files move to `agent-demo/drop/processed/`, so each drop runs
+   exactly once; dropping the file again later is a deliberate fresh run.
+   Non-PDF/TXT files are ignored silently.
+
+If the watcher is down, the in-app run below is fallback one; the seeded
+inbox is fallback two.
+
+## The run, in-app version (fallback one)
 
 1. Drag the PDF onto the drop zone. (Optional: open "The prompt" peek.)
 2. Review the clauses button. Narrate the raise panel: the missing Liability

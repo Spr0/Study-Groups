@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   buildApprovalEmail,
+  buildIngestPayload,
   buildSignatoryEmail,
   buildSignedSummaryText,
   buildSignoffPageHtml,
@@ -9,6 +10,7 @@ import {
   FICTIONAL_REVIEWER_EMAIL,
   FICTIONAL_SENDER,
   FICTIONAL_SIGNATORY,
+  FICTIONAL_WATCH_REVIEWER,
   isCompletePayload,
   type SignoffPayload,
 } from "./demo-templates";
@@ -112,6 +114,35 @@ describe("the sign-off page", () => {
     expect(html).toContain("[REVIEWED]");
     expect(html).toContain("The signature is human.");
     expect(html).toContain(FICTIONAL_SIGNATORY.name);
+  });
+});
+
+describe("the watched-folder ingest path", () => {
+  const p = buildIngestPayload("dropped-contract.pdf", SAMPLE_FALLBACK_RESULT);
+  it("builds a payload that passes the human sign-off gate", () => {
+    expect(isCompletePayload(p)).toBe(true);
+    expect(p.source).toBe("dropped-contract.pdf");
+    expect(p.reviewer.name).toBe(FICTIONAL_WATCH_REVIEWER.name);
+    expect(p.verified).toEqual(FIVE_CLAUSES);
+  });
+  it("routes through the existing emails only: every address stays on .test", () => {
+    const approval = buildApprovalEmail(p, "http://localhost:8888/api/demo/signoff?p=x");
+    const signatory = buildSignatoryEmail(p);
+    for (const addr of [
+      approval.from.email,
+      approval.to.email,
+      signatory.from.email,
+      signatory.to.email,
+    ]) {
+      expect(addr).toMatch(/\.test$/);
+    }
+  });
+  it("still requires the human click: the payload alone signs nothing", () => {
+    // The signature line only exists in artifacts generated AFTER the
+    // sign-off link is opened; the approval email must not contain it.
+    const approval = buildApprovalEmail(p, "http://localhost:8888/api/demo/signoff?p=x");
+    expect(approval.text).not.toContain("Signed off by");
+    expect(approval.text).toContain("Your click is the signature.");
   });
 });
 
