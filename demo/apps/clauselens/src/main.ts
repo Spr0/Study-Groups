@@ -580,7 +580,7 @@ async function explain(btn: HTMLButtonElement): Promise<void> {
 // =============================================================================
 function exportText(r: ClauseResult, src: RunSource): string {
   const lines: string[] = [];
-  lines.push("ClauseLens Contract Review");
+  lines.push("Contract Clause Review");
   lines.push(`Source: ${src.label}`);
   lines.push("");
   lines.push("RAISE BEFORE SIGNING");

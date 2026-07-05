@@ -16,7 +16,7 @@ import { FIVE_CLAUSES, STATUS_NOT_FOUND } from "@sg/sample-data";
 // ---- The fictional cast (all .test: unroutable by design) ----
 export const FICTIONAL_REVIEWER_EMAIL = "reviewer@cascaderidge.test";
 export const FICTIONAL_SENDER = {
-  name: "ClauseLens Agent (demo)",
+  name: "Contract Review Agent (demo)",
   email: "clauselens-agent@cascaderidge.test",
 };
 export const FICTIONAL_SIGNATORY = {
@@ -155,7 +155,7 @@ export function buildApprovalEmail(p: SignoffPayload, signoffUrl: string): Email
   const html = `
 <div style="${EMAIL_CSS}max-width:560px">
   <div style="border-bottom:2px solid ${NAVY};padding-bottom:8px;margin-bottom:16px">
-    <strong style="color:${NAVY};font-size:16px">ClauseLens</strong>
+    <strong style="color:${NAVY};font-size:16px">Contract review</strong>
     <span style="color:#8c8775;font-size:12px"> &middot; sign-off requested</span>
   </div>
   <p>${esc(p.reviewer.name)},</p>
@@ -204,7 +204,7 @@ export function buildSignatoryEmail(p: SignoffPayload): EmailContent {
   const html = `
 <div style="${EMAIL_CSS}max-width:560px">
   <div style="border-bottom:2px solid ${NAVY};padding-bottom:8px;margin-bottom:16px">
-    <strong style="color:${NAVY};font-size:16px">ClauseLens</strong>
+    <strong style="color:${NAVY};font-size:16px">Contract review</strong>
     <span style="color:#8c8775;font-size:12px"> &middot; reviewed contract summary</span>
   </div>
   <p>${esc(FICTIONAL_SIGNATORY.name)},</p>
@@ -260,7 +260,7 @@ export function buildSignoffPageHtml(p: SignoffPayload): string {
 <div style="max-width:680px;margin:0 auto;padding:40px 24px">
   <div style="border-bottom:1.5px solid ${NAVY};padding-bottom:12px;margin-bottom:24px">
     <span style="background:${NAVY};color:#fff;font-weight:700;font-size:13px;padding:6px 9px;border-radius:4px">SG</span>
-    <strong style="color:${NAVY};font-size:16px;margin-left:8px">ClauseLens</strong>
+    <strong style="color:${NAVY};font-size:16px;margin-left:8px">Contract review</strong>
     <span style="color:#8c8775;font-size:12px;text-transform:uppercase;letter-spacing:.05em"> &middot; sign-off complete</span>
   </div>
   <h1 style="font-size:26px;letter-spacing:-0.02em;margin:0 0 6px">Signed and sent</h1>
