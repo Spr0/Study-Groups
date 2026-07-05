@@ -27,14 +27,17 @@ import {
 import {
   buildExtractPrompt,
   CONTRACT_OPTIONS,
+  fingerprintContract,
   FIVE_CLAUSES,
   isValidResult,
+  SAMPLE_CONTRACT_TEXT,
   SAMPLE_EXPLAIN_FALLBACKS,
   STATUS_NOT_FOUND,
   type Clause,
   type ClauseResult,
   type ContractOption,
 } from "@sg/sample-data";
+import type { SignoffPayload } from "./demo-templates";
 import { extractPdfText, ScannedPdfError } from "./pdf";
 
 const APPROVAL: ApprovalConfig = {
@@ -59,6 +62,26 @@ let result: ClauseResult | null = null;
 let usedFallback = false;
 let approved: Approver | null = null;
 let busy = false;
+
+// ---- Agent demo mode (local only): on when the demo agent answers its
+// health check, which requires DEMO_AGENT=1 in the netlify dev environment.
+// In production the probe 403s and none of the demo UI exists. ----
+let demoMode = false;
+void (async () => {
+  try {
+    const res = await fetch("/api/demo/health");
+    demoMode = res.ok && ((await res.json()) as { demo?: boolean }).demo === true;
+  } catch {
+    demoMode = false;
+  }
+})();
+
+// The demo contract is recognized by CONTENT HASH, however it arrives: a
+// dropped PDF of the sample arms the vetted fallback exactly like picking it
+// from the dropdown, while any other PDF goes to the model.
+let sampleFpPromise: Promise<string> | null = null;
+const sampleFingerprint = (): Promise<string> =>
+  (sampleFpPromise ??= fingerprintContract(SAMPLE_CONTRACT_TEXT));
 
 // =============================================================================
 // Input view
@@ -153,7 +176,12 @@ function renderInput(): void {
       } else {
         throw new Error("Please drop a PDF (or TXT) file.");
       }
-      source = { label: f.name, contractText: text, option: null };
+      const matched = (await fingerprintContract(text)) === (await sampleFingerprint());
+      source = {
+        label: f.name,
+        contractText: text,
+        option: matched ? (CONTRACT_OPTIONS[0] ?? null) : null,
+      };
       setFileNote(f.name);
     } catch (e) {
       source = null;
@@ -217,11 +245,16 @@ async function run(
     return;
   }
 
+  // Live model call with a hard timeout: short when the vetted fallback is
+  // armed (the demo can never hang), generous for arbitrary contracts.
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), fallback ? 12_000 : 45_000);
   try {
     const res = await fetch("/api/analyze", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ mode: "extract", contractText: source.contractText }),
+      signal: controller.signal,
     });
     const data: unknown = await res.json().catch(() => null);
     const body = (data ?? {}) as { result?: unknown; error?: string };
@@ -241,6 +274,7 @@ async function run(
       setError(err instanceof Error ? err.message : "Analysis failed. Please try again.");
     }
   } finally {
+    clearTimeout(timer);
     busy = false;
     runBtn.disabled = !source;
     runBtn.textContent = "Review the clauses";
@@ -351,10 +385,12 @@ function renderResults(): void {
       </div>
       <div class="accept-row">
         <button id="cl-approve" class="btn btn-accept" type="button" disabled>Approve this review</button>
+        <button id="cl-send" class="btn btn-primary" type="button" hidden>Email for sign-off</button>
         <button id="cl-export" class="btn btn-copy" type="button" disabled>Export</button>
         <button id="cl-copy" class="btn btn-copy" type="button" disabled>Copy</button>
         <button id="cl-print" class="btn btn-copy" type="button" disabled>Print</button>
         <span id="cl-note" class="copy-note" role="status" hidden>Copied. Nothing is saved.</span>
+        <span id="cl-sent" class="copy-note" role="status" hidden></span>
       </div>
       <p id="cl-approved-line" class="cl-approved" hidden></p>
       <p class="standing-line">${escapeHtml(STANDING_LINE)}</p>
@@ -387,6 +423,8 @@ function renderResults(): void {
     copyBtn.disabled = !on;
     printBtn.disabled = !on;
   };
+  const sendBtn = q<HTMLButtonElement>("#cl-send");
+  const sentNote = q<HTMLElement>("#cl-sent");
   const refreshGate = (): void => {
     const ready = allVerified() && nameEl.value.trim() !== "" && roleEl.value.trim() !== "";
     approveBtn.disabled = !ready || !!approved;
@@ -394,6 +432,8 @@ function renderResults(): void {
       setOutputs(false);
       note.hidden = true;
       approvedLine.hidden = true;
+      sendBtn.hidden = true;
+      sentNote.hidden = true;
     }
   };
   app.addEventListener("change", (e) => {
@@ -418,6 +458,50 @@ function renderResults(): void {
     setOutputs(true);
     approvedLine.hidden = false;
     approvedLine.textContent = buildApprovalLine(APPROVAL, approved);
+    // The agent step, local demo only: route the verified review for the
+    // human sign-off click. The button never exists in production.
+    if (demoMode) {
+      sendBtn.hidden = false;
+      sendBtn.disabled = false;
+      sendBtn.textContent = "Email for sign-off";
+    }
+  });
+
+  sendBtn.addEventListener("click", () => {
+    if (!approved) return;
+    const payload: SignoffPayload = {
+      source: src.label,
+      reviewer: approved,
+      result: r,
+      verified: [...FIVE_CLAUSES],
+      approvedAtIso: new Date().toISOString(),
+    };
+    sendBtn.disabled = true;
+    sendBtn.textContent = "Sending...";
+    void (async () => {
+      try {
+        const res = await fetch("/api/demo/send-approval", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        const data = (await res.json().catch(() => null)) as {
+          ok?: boolean;
+          error?: string;
+        } | null;
+        if (!res.ok || !data?.ok)
+          throw new Error(data?.error ?? "Could not reach the local inbox.");
+        sendBtn.textContent = "Sent for sign-off";
+        sentNote.textContent = "Report sent for sign-off. Open the inbox.";
+        sentNote.hidden = false;
+      } catch (err) {
+        sendBtn.disabled = false;
+        sendBtn.textContent = "Email for sign-off";
+        sentNote.textContent =
+          err instanceof Error ? err.message : "Send failed. Is Mailpit running?";
+        sentNote.hidden = false;
+      }
+    })();
   });
 
   exportBtn.addEventListener("click", () => {

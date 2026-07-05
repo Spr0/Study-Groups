@@ -22,6 +22,8 @@ export {
   parseClauseResponse,
   isValidResult,
   foundCount,
+  normalizeForFingerprint,
+  fingerprintContract,
 } from "./clauses";
 export type {
   Clause,

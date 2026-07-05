@@ -294,3 +294,22 @@ export function foundCount(result: unknown): number {
   if (!isValidResult(result)) return 0;
   return result.clauses.filter((c) => c.status === STATUS_FOUND).length;
 }
+
+// -----------------------------------------------------------------------------
+// Content fingerprint: recognize the demo contract by CONTENT, however it
+// arrives (a dropped PDF's extracted text differs from the canonical string in
+// whitespace, line breaks, and punctuation rendering). Only [a-z0-9] survive
+// normalization, so the fingerprint is stable across those variations. A match
+// arms the vetted fallback and the short live-call timeout; any other content
+// goes to the model as usual.
+// -----------------------------------------------------------------------------
+export function normalizeForFingerprint(text: string): string {
+  return text.toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
+/** SHA-256 hex of the normalized content. Works in the browser, Node 20, and vitest. */
+export async function fingerprintContract(text: string): Promise<string> {
+  const bytes = new TextEncoder().encode(normalizeForFingerprint(text));
+  const digest = await globalThis.crypto.subtle.digest("SHA-256", bytes);
+  return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, "0")).join("");
+}

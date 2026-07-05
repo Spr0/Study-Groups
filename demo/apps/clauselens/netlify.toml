@@ -19,3 +19,14 @@
 [functions]
   directory = "apps/clauselens/netlify/functions"
   node_bundler = "esbuild"
+
+# Local dev only (`netlify dev` run from this directory). The cloud ignores
+# [dev]. Paths here resolve against the CWD, hence the plain relative form.
+# The agent-demo functions additionally require DEMO_AGENT=1 in ./.env, so
+# they are inert everywhere except an explicitly configured local demo.
+[dev]
+  command = "npm run dev"
+  targetPort = 5173
+  port = 8888
+  functions = "netlify/functions"
+  autoLaunch = false
