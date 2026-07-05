@@ -139,8 +139,8 @@
   color: var(--body-text);
   margin-bottom: 10px;
 }
-.cl-raise-list li.cl-raise-first {
-  font-size: 16px;
+.cl-raise-list li.cl-raise-item--gap {
+  font-size: 17px;
   font-weight: 700;
   color: var(--ink);
 }
@@ -149,6 +149,27 @@
   margin-left: -22px;
   color: var(--muted-text);
   font-style: italic;
+}
+.cl-tag {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  border-radius: 999px;
+  padding: 2px 9px;
+  margin-right: 8px;
+  vertical-align: 2px;
+  white-space: nowrap;
+}
+.cl-tag--gap {
+  background: var(--brick);
+  color: #fff;
+}
+.cl-tag--onesided {
+  border: 1.5px solid var(--brick);
+  color: var(--brick);
+  background: #fff;
 }
 
 .cl-verify-hint {
@@ -219,6 +240,8 @@
   height: 16px;
   accent-color: var(--royal);
 }
+/* Verbatim quotes read as evidence: mono on cream behind a navy rule.
+   Restatements read as commentary: italic sans. Distinct at a glance. */
 .cl-quote {
   font-family: var(--mono);
   font-size: 13px;
@@ -226,6 +249,7 @@
   color: var(--ink);
   background: var(--cream);
   border: 1px solid var(--hair);
+  border-left: 2px solid var(--royal);
   border-radius: 3px;
   padding: 12px 14px;
   white-space: pre-wrap;
@@ -234,14 +258,17 @@
 .cl-quote--missing {
   color: var(--muted-text);
   font-style: italic;
+  border-left-color: var(--brick);
 }
 .cl-plain {
   margin-top: 10px;
   font-size: 14px;
+  font-style: italic;
   line-height: 1.65;
   color: var(--body-text);
 }
 .cl-plain-tag {
+  font-style: normal;
   font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.1em;

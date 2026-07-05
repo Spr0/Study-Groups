@@ -19,11 +19,13 @@ import {
   buildApprovalLine,
   computeRoi,
   escapeHtml,
+  normalizeDashes,
   ROI_CONFIG,
   ROI_HEADLINE,
   type ApprovalConfig,
   type Approver,
 } from "@sg/core";
+import { normalizeResultCopy, styleRaiseItems } from "./report-style";
 import {
   buildExtractPrompt,
   CONTRACT_OPTIONS,
@@ -238,7 +240,7 @@ async function run(
   const fallback = source.option?.fallbackResult ?? null;
 
   if (offline && fallback) {
-    result = fallback;
+    result = normalizeResultCopy(fallback);
     usedFallback = true;
     busy = false;
     renderResults();
@@ -261,13 +263,13 @@ async function run(
     if (!res.ok || body.error || !isValidResult(body.result)) {
       throw new Error(body.error ?? "Could not read a result from the analysis. Try again.");
     }
-    result = body.result;
+    result = normalizeResultCopy(body.result);
     usedFallback = false;
     renderResults();
   } catch (err) {
     if (fallback) {
       // The demo never dies: fall back to the vetted cached result.
-      result = fallback;
+      result = normalizeResultCopy(fallback);
       usedFallback = true;
       renderResults();
     } else {
@@ -341,9 +343,21 @@ function renderResults(): void {
   const src = source;
   approved = null;
 
-  const raiseItems = r.raise.length
-    ? r.raise
-        .map((item, i) => `<li class="${i === 0 ? "cl-raise-first" : ""}">${escapeHtml(item)}</li>`)
+  // Emphasis hierarchy at render time (so live and fallback cannot diverge):
+  // material gaps lead, bold with a red tag; one-sided terms carry a flag.
+  const styled = styleRaiseItems(r);
+  const raiseItems = styled.length
+    ? styled
+        .map(
+          (item) =>
+            `<li class="cl-raise-item${item.materialGap ? " cl-raise-item--gap" : ""}">${
+              item.materialGap
+                ? `<span class="cl-tag cl-tag--gap">Material gap</span>`
+                : item.oneSided
+                  ? `<span class="cl-tag cl-tag--onesided">One-sided</span>`
+                  : ""
+            }${escapeHtml(item.text)}</li>`,
+        )
         .join("")
     : `<li class="cl-raise-none">Nothing flagged.</li>`;
 
@@ -508,7 +522,7 @@ function renderResults(): void {
     downloadText("clause-review-approved.txt", exportText(r, src));
   });
   copyBtn.addEventListener("click", () => void copyText(exportText(r, src), note));
-  printBtn.addEventListener("click", () => printText(exportText(r, src)));
+  printBtn.addEventListener("click", () => printHtml(buildPrintHtml(r, src)));
 
   // ---- ROI wiring (pure math from @sg/core) ----
   setupRoi();
@@ -567,7 +581,7 @@ async function explain(btn: HTMLButtonElement): Promise<void> {
       "Live AI was unavailable and no saved explanation exists for this clause. Verify it directly against the contract.";
   }
 
-  body.textContent = text;
+  body.textContent = normalizeDashes(text);
   body.dataset.loaded = "true";
   body.hidden = false;
   btn.disabled = false;
@@ -584,8 +598,14 @@ function exportText(r: ClauseResult, src: RunSource): string {
   lines.push(`Source: ${src.label}`);
   lines.push("");
   lines.push("RAISE BEFORE SIGNING");
-  if (r.raise.length === 0) lines.push("Nothing flagged.");
-  else r.raise.forEach((item, i) => lines.push(`${i + 1}. ${item}`));
+  const styled = styleRaiseItems(r);
+  if (styled.length === 0) lines.push("Nothing flagged.");
+  else
+    styled.forEach((item, i) =>
+      lines.push(
+        `${i + 1}. ${item.materialGap ? "[MATERIAL GAP] " : item.oneSided ? "[ONE-SIDED] " : ""}${item.text}`,
+      ),
+    );
   lines.push("");
   for (const c of r.clauses) {
     lines.push(`${c.name.toUpperCase()} - ${c.status}`);
@@ -627,15 +647,53 @@ async function copyText(text: string, note: HTMLElement): Promise<void> {
   note.hidden = false;
 }
 
-function printText(text: string): void {
+// The printed report mirrors the on-screen hierarchy: raise panel first with
+// material gaps bold and tagged, quotes distinct from italic restatements.
+// Built from the same rendered data, so screen and paper cannot diverge.
+function buildPrintHtml(r: ClauseResult, src: RunSource): string {
+  const styled = styleRaiseItems(r);
+  const raise = styled.length
+    ? `<ol style="margin:0;padding-left:20px">${styled
+        .map(
+          (item) =>
+            `<li style="margin-bottom:8px;${item.materialGap ? "font-weight:700" : ""}">${
+              item.materialGap ? "[MATERIAL GAP] " : item.oneSided ? "[ONE-SIDED] " : ""
+            }${escapeHtml(item.text)}</li>`,
+        )
+        .join("")}</ol>`
+    : `<p style="font-style:italic">Nothing flagged.</p>`;
+  const clauses = r.clauses
+    .map(
+      (c) => `
+    <div style="margin-bottom:14px">
+      <div style="font-weight:700;text-transform:uppercase;letter-spacing:.04em;font-size:12px">
+        ${escapeHtml(c.name)} <span style="color:${c.status === STATUS_NOT_FOUND ? "#c4341f" : "#14208a"}">${escapeHtml(c.status)}</span></div>
+      <div style="font-family:ui-monospace,monospace;font-size:11px;line-height:1.6;border:1px solid #dad5c7;border-left:2px solid #14208a;padding:8px 10px;margin:6px 0;white-space:pre-wrap">${escapeHtml(c.quote)}</div>
+      ${c.plain ? `<div style="font-style:italic;font-size:12px">Plain: ${escapeHtml(c.plain)}</div>` : ""}
+    </div>`,
+    )
+    .join("");
+  return `<div style="font-family:'Helvetica Neue',Arial,sans-serif;font-size:13px;line-height:1.6;color:#171717;padding:24px">
+    <h1 style="font-size:20px;margin:0 0 2px">Contract Clause Review</h1>
+    <div style="font-size:11px;color:#8c8775;margin-bottom:16px">Source: ${escapeHtml(src.label)}</div>
+    <div style="border:2px solid #c4341f;padding:12px 16px;margin-bottom:18px">
+      <div style="color:#c4341f;font-weight:800;text-transform:uppercase;letter-spacing:.04em;font-size:13px;margin-bottom:8px">Raise before signing</div>
+      ${raise}
+    </div>
+    ${clauses}
+    <div style="border-top:1px solid #dad5c7;padding-top:10px;font-size:12px">
+      ${escapeHtml(STANDING_LINE)}${approved ? `<br><strong>${escapeHtml(buildApprovalLine(APPROVAL, approved))}</strong>` : ""}
+    </div>
+  </div>`;
+}
+
+function printHtml(bodyHtml: string): void {
   const frame = document.createElement("iframe");
   frame.style.cssText = "position:fixed;right:0;bottom:0;width:0;height:0;border:0;";
   document.body.append(frame);
   const doc = frame.contentWindow!.document;
   doc.open();
-  doc.write(
-    `<pre style="font-family:'Helvetica Neue',Arial,sans-serif;font-size:13px;line-height:1.6;white-space:pre-wrap;padding:24px;">${escapeHtml(text)}</pre>`,
-  );
+  doc.write(bodyHtml);
   doc.close();
   frame.contentWindow!.focus();
   frame.contentWindow!.print();
