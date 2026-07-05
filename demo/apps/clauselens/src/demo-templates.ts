@@ -17,7 +17,7 @@ import { FIVE_CLAUSES, STATUS_NOT_FOUND } from "@sg/sample-data";
 export const FICTIONAL_REVIEWER_EMAIL = "reviewer@cascaderidge.test";
 export const FICTIONAL_SENDER = {
   name: "Contract Review Agent (demo)",
-  email: "clauselens-agent@cascaderidge.test",
+  email: "contract-review-agent@cascaderidge.test",
 };
 export const FICTIONAL_SIGNATORY = {
   name: "Dana Whitfield",
