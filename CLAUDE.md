@@ -80,14 +80,16 @@ title and `##` for sections; deeper levels render unstyled.
 ## Work queue
 
 1. **Finish the contract-review cutover.** The differentiated app
-   (`demo/apps/clauselens` on the platform: PDF drop, dominant raise panel,
-   per-clause explain/verify, projection styling, gated agent-demo functions)
-   is live in production at **studygroups-contract.netlify.app** (site
-   `7341ebf2-7d36-4025-8a91-b8b74763a5d1`, renamed from "clauselens" per the
-   task-naming rule; the old clauselens.netlify.app subdomain was RELEASED by
-   that rename and now 404s - hunt down stale links, e.g. the old
-   Spr0/ClauseLens README). "ClauseLens" survives only as deployment identity
-   (package name, paths, roi key), never in user-visible prose. Remaining:
+   (`demo/apps/clauselens` on the platform: drop-or-paste intake, dominant
+   raise panel, per-clause explain/verify, projection styling, gated
+   agent-demo functions) is live in production at
+   **studygroups-contract.netlify.app** at **main@d7f10ed** (rehearsal-verified
+   promote, 2026-07-05; site `7341ebf2-7d36-4025-8a91-b8b74763a5d1`, renamed
+   from "clauselens" per the task-naming rule; the old clauselens.netlify.app
+   subdomain was RELEASED by that rename and now 404s - hunt down stale links,
+   e.g. the old Spr0/ClauseLens README). "ClauseLens" survives only as
+   deployment identity (package name, paths, roi key), never in user-visible
+   prose. Remaining:
    - Relink the site from `Spr0/ClauseLens` to `Spr0/Study-Groups`: base
      `demo`, package `demo/apps/clauselens`, branch `main` (Netlify UI; keep
      `ANTHROPIC_API_KEY` / `ANTHROPIC_MODEL` env vars). Until then, pushes to
