@@ -79,18 +79,23 @@ title and `##` for sections; deeper levels render unstyled.
 
 ## Work queue
 
-1. **Finish the ClauseLens cutover.** The migrated app (`demo/apps/clauselens`
-   on `@sg/core`, commit `dd64aeb`) is live at clauselens.netlify.app via a
-   manual CLI deploy. Remaining:
-   - Relink the `clauselens` site (`7341ebf2-7d36-4025-8a91-b8b74763a5d1`)
-     from `Spr0/ClauseLens` to `Spr0/Study-Groups`: base `demo`, package
-     `demo/apps/clauselens`, branch `main` (Netlify UI; keep
+1. **Finish the contract-review cutover.** The differentiated app
+   (`demo/apps/clauselens` on the platform: PDF drop, dominant raise panel,
+   per-clause explain/verify, projection styling, gated agent-demo functions)
+   is live in production at **studygroups-contract.netlify.app** (site
+   `7341ebf2-7d36-4025-8a91-b8b74763a5d1`, renamed from "clauselens" per the
+   task-naming rule; the old clauselens.netlify.app subdomain was RELEASED by
+   that rename and now 404s - hunt down stale links, e.g. the old
+   Spr0/ClauseLens README). "ClauseLens" survives only as deployment identity
+   (package name, paths, roi key), never in user-visible prose. Remaining:
+   - Relink the site from `Spr0/ClauseLens` to `Spr0/Study-Groups`: base
+     `demo`, package `demo/apps/clauselens`, branch `main` (Netlify UI; keep
      `ANTHROPIC_API_KEY` / `ANTHROPIC_MODEL` env vars). Until then, pushes to
-     main do NOT redeploy this app.
-   - Decide with Scott on the features deferred from the standalone app:
-     PDF/DOCX/TXT upload with client-side extraction, per-clause inline edit,
-     and the per-clause explain call. If upload is wanted, add it to core
-     behind a UseCase flag so every app can use it.
+     main do NOT redeploy this app; deploy by CLI (draft, verify, then
+     --prod) from `apps/clauselens`.
+   - The agent demo (watched folder, sign-off emails, Mailpit) is LOCAL ONLY,
+     gated on DEMO_AGENT=1; in production the /api/demo/* routes 403 by
+     design. See apps/clauselens/DEMO-RUNBOOK.md.
    - Only after Scott confirms the cutover sticks: archive `Spr0/ClauseLens`,
      delete `~/Downloads/ClauseLens_repo` and the loose non-git copy
      `~/Downloads/ClauseLens`. Rollback until then: restore the site's prior
