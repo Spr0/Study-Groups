@@ -78,9 +78,10 @@ void (async () => {
   }
 })();
 
-// The demo contract is recognized by CONTENT HASH, however it arrives: a
-// dropped PDF of the sample arms the vetted fallback exactly like picking it
-// from the dropdown, while any other PDF goes to the model.
+// The demo contract is recognized by CONTENT HASH, however it arrives
+// (dropped PDF, TXT, or pasted text): matching content arms the vetted
+// fallback, while any other contract goes to the model. Intake is exactly
+// two paths: drop/upload a PDF, or paste the text.
 let sampleFpPromise: Promise<string> | null = null;
 const sampleFingerprint = (): Promise<string> =>
   (sampleFpPromise ??= fingerprintContract(SAMPLE_CONTRACT_TEXT));
@@ -94,14 +95,7 @@ function renderInput(): void {
   usedFallback = false;
   app.innerHTML = `
   <div class="cl-input">
-    <label class="field-label" for="cl-select">Choose a contract</label>
-    <select id="cl-select" class="select">
-      <option value="" selected>Select a contract...</option>
-      ${CONTRACT_OPTIONS.map((o) => `<option value="${escapeHtml(o.id)}">${escapeHtml(o.label)}</option>`).join("")}
-    </select>
-
-    <div class="or-row" aria-hidden="true"><span>or drop your own (the encore)</span></div>
-
+    <label class="field-label" for="cl-file">The contract</label>
     <div id="cl-drop" class="cl-drop" role="button" tabindex="0"
       aria-label="Drop a contract PDF here, or press Enter to browse">
       <div class="cl-drop-icon" aria-hidden="true">&#8595;</div>
@@ -109,12 +103,18 @@ function renderInput(): void {
       <div class="cl-drop-sub">Text-layer PDFs only; scanned PDFs need OCR first. Nothing is stored.</div>
       <input id="cl-file" type="file" accept=".pdf,.txt" hidden />
     </div>
+
+    <div class="or-row" aria-hidden="true"><span>or paste the contract text</span></div>
+
+    <textarea id="cl-paste" class="free-text" rows="4"
+      placeholder="Paste the contract text here..." aria-label="Paste the contract text"></textarea>
+
     <div id="cl-file-note" class="cl-file-note" hidden></div>
     <div id="cl-error" class="saved-banner" hidden></div>
 
     <details class="cl-prompt-peek">
       <summary>The prompt: exactly what gets sent to the model</summary>
-      <pre id="cl-prompt" class="prompt-view muted">Pick a contract or drop a PDF to assemble the prompt.</pre>
+      <pre id="cl-prompt" class="prompt-view muted">Drop a PDF or paste the contract text to assemble the prompt.</pre>
     </details>
 
     <div class="controls">
@@ -124,8 +124,8 @@ function renderInput(): void {
     <p class="standing-line">${escapeHtml(STANDING_LINE)}</p>
   </div>`;
 
-  const select = q<HTMLSelectElement>("#cl-select");
   const drop = q<HTMLElement>("#cl-drop");
+  const paste = q<HTMLTextAreaElement>("#cl-paste");
   const file = q<HTMLInputElement>("#cl-file");
   const note = q<HTMLElement>("#cl-file-note");
   const error = q<HTMLElement>("#cl-error");
@@ -147,7 +147,7 @@ function renderInput(): void {
       promptPre.textContent = buildExtractPrompt(shown);
       promptPre.classList.remove("muted");
     } else {
-      promptPre.textContent = "Pick a contract or drop a PDF to assemble the prompt.";
+      promptPre.textContent = "Drop a PDF or paste the contract text to assemble the prompt.";
       promptPre.classList.add("muted");
     }
   }
@@ -156,17 +156,35 @@ function renderInput(): void {
     note.textContent = name ? `✓ ${name}` : "";
   }
 
-  select.addEventListener("change", () => {
-    setError(null);
-    setFileNote(null);
-    const opt = CONTRACT_OPTIONS.find((o) => o.id === select.value) ?? null;
-    source = opt ? { label: opt.label, contractText: opt.contractText, option: opt } : null;
-    refresh();
+  // Both intake paths land here: the vetted fallback is keyed to CONTENT
+  // (fingerprint), never to how the contract arrived.
+  async function setSourceFromText(text: string, label: string): Promise<void> {
+    const matched = (await fingerprintContract(text)) === (await sampleFingerprint());
+    source = {
+      label,
+      contractText: text,
+      option: matched ? (CONTRACT_OPTIONS[0] ?? null) : null,
+    };
+  }
+
+  let pasteTimer: ReturnType<typeof setTimeout> | undefined;
+  paste.addEventListener("input", () => {
+    clearTimeout(pasteTimer);
+    pasteTimer = setTimeout(() => {
+      void (async () => {
+        setError(null);
+        setFileNote(null);
+        const text = paste.value.trim();
+        if (text) await setSourceFromText(text, "Pasted text");
+        else source = null;
+        refresh();
+      })();
+    }, 250);
   });
 
   async function acceptFile(f: File): Promise<void> {
     setError(null);
-    select.value = "";
+    paste.value = "";
     const lower = f.name.toLowerCase();
     try {
       let text: string;
@@ -178,12 +196,7 @@ function renderInput(): void {
       } else {
         throw new Error("Please drop a PDF (or TXT) file.");
       }
-      const matched = (await fingerprintContract(text)) === (await sampleFingerprint());
-      source = {
-        label: f.name,
-        contractText: text,
-        option: matched ? (CONTRACT_OPTIONS[0] ?? null) : null,
-      };
+      await setSourceFromText(text, f.name);
       setFileNote(f.name);
     } catch (e) {
       source = null;
