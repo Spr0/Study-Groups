@@ -25,12 +25,15 @@ printf 'DEMO_AGENT=1\n' > .env        # turns the demo agent on, LOCAL ONLY
    cd ~/Projects/Study-Groups/demo/apps/clauselens
    ./agent-demo/.tools/mailpit --database agent-demo/.tools/mailpit-demo.db
    ```
-2. **Start the app** (terminal 2). Pass the flag inline; process env always
-   wins even when the CLI skips .env injection:
+2. **Start the app** (terminal 2). Pass the vars inline; process env always
+   wins even when the CLI skips .env injection. `analyze.ts` returns 503
+   without **either** the key or the model, and the agent then silently falls
+   back, so set both to run the review live:
    ```bash
    cd ~/Projects/Study-Groups/demo/apps/clauselens
    export NVM_DIR="$HOME/.nvm" && . "$NVM_DIR/nvm.sh"
-   DEMO_AGENT=1 netlify dev   # app + functions on http://localhost:8888
+   DEMO_AGENT=1 ANTHROPIC_API_KEY=sk-ant-... ANTHROPIC_MODEL=<current-model> netlify dev
+   # app + functions on http://localhost:8888
    ```
    Confirm: `curl -s localhost:8888/api/demo/health` returns `"demo":true`.
 3. **Seed the fallback mailbox** (terminal 3, once):
@@ -51,6 +54,15 @@ printf 'DEMO_AGENT=1\n' > .env        # turns the demo agent on, LOCAL ONLY
 
 Start the watcher (terminal 4): `node agent-demo/watch-folder.mjs`
 It watches `agent-demo/drop/` and logs one line per file.
+
+To prove live on the demo contract in rehearsal, set
+`DEMO_AGENT_TIMEOUT_MS=45000` before starting the app; the watcher log reads
+`(live)`. Unset it for the stage run to keep the 12s no-stall default.
+
+The watcher watches `agent-demo/drop/` by default. To point it at any folder,
+set `DEMO_WATCH_DIR=/absolute/path` before `node agent-demo/watch-folder.mjs`.
+It creates the folder and a `processed/` subfolder if missing, picks up `.pdf`
+and `.txt` only, and moves handled files to `processed/`.
 
 1. Drag `cascade-ridge-subcontract.pdf` into the `agent-demo/drop/` folder in
    Finder. That is the whole input: the agent acts only on files in this one

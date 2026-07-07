@@ -118,8 +118,15 @@ export default async (req: Request, _context: Context): Promise<Response> => {
     let result: ClauseResult | null = null;
     let mode: "live" | "fallback" = "live";
     try {
+      // Mirror the in-app rule (src/main.ts): the recognized demo contract can fall
+      // back instantly, so it waits only BASE_MS; an arbitrary contract has no
+      // fallback and must be allowed to finish live. DEMO_AGENT_TIMEOUT_MS lets a
+      // rehearsal prove the live path on the demo contract without changing the
+      // on-stage default.
+      const BASE_MS = Number(process.env.DEMO_AGENT_TIMEOUT_MS) || 12_000;
+      const timeoutMs = armed ? BASE_MS : 45_000;
       const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), 12_000);
+      const timer = setTimeout(() => controller.abort(), timeoutMs);
       const res = await fetch(`${url.origin}/api/analyze`, {
         method: "POST",
         headers: { "content-type": "application/json" },
