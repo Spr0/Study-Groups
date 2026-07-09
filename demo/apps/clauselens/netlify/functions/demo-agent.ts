@@ -19,10 +19,9 @@
 // =============================================================================
 import type { Config, Context } from "@netlify/functions";
 import {
-  fingerprintContract,
   FIVE_CLAUSES,
   isValidResult,
-  SAMPLE_CONTRACT_TEXT,
+  reviewContract,
   SAMPLE_FALLBACK_RESULT,
   type ClauseResult,
 } from "@sg/sample-data";
@@ -55,6 +54,30 @@ const smtp = (): { host: string; port: number } => ({
   host: process.env.DEMO_SMTP_HOST ?? "localhost",
   port: Number(process.env.DEMO_SMTP_PORT ?? "1025"),
 });
+
+// Live inference for an arbitrary contract: POST to the shared /api/analyze
+// endpoint (the one model call, no duplicate). The recognized demo contract
+// never reaches here because reviewContract() short-circuits on the content
+// hash first, so this timeout only ever guards a genuine live call. It throws
+// on any failure; the caller turns that into a 502 (never a fabricated table).
+const LIVE_TIMEOUT_MS = 45_000;
+async function liveExtract(origin: string, contractText: string): Promise<ClauseResult> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), LIVE_TIMEOUT_MS);
+  try {
+    const res = await fetch(`${origin}/api/analyze`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ mode: "extract", contractText }),
+      signal: controller.signal,
+    });
+    const data = (await res.json().catch(() => null)) as { result?: unknown } | null;
+    if (res.ok && data && isValidResult(data.result)) return data.result;
+    throw new Error("live review did not return a valid result");
+  } finally {
+    clearTimeout(timer);
+  }
+}
 
 export default async (req: Request, _context: Context): Promise<Response> => {
   if (process.env.DEMO_AGENT !== "1") {
@@ -89,11 +112,11 @@ export default async (req: Request, _context: Context): Promise<Response> => {
   }
 
   // Watched-folder intake: the local watcher POSTs a file it saw land in the
-  // demo folder. Same review semantics as the app (live extract with a 12s
-  // timeout, vetted fallback only when the content fingerprints to the
-  // sample), then the SAME sign-off request template and sender as the in-app
-  // path. No new email path exists: the reviewer's click remains the
-  // signature, exactly as before.
+  // demo folder. It runs the SAME shared review entry point as the in-app path
+  // (reviewContract: content hash first, vetted result instantly for the demo
+  // contract, live inference for anything else), then the SAME sign-off request
+  // template and sender. No new email path exists: the reviewer's click remains
+  // the signature, exactly as before.
   if (url.pathname.endsWith("/ingest")) {
     if (req.method !== "POST") return json({ error: "Method Not Allowed" }, 405);
     let body: { fileName?: unknown; contractText?: unknown };
@@ -111,39 +134,13 @@ export default async (req: Request, _context: Context): Promise<Response> => {
       return json({ error: "Contract is too long." }, 413);
     }
 
-    const armed =
-      (await fingerprintContract(contractText)) ===
-      (await fingerprintContract(SAMPLE_CONTRACT_TEXT));
-
-    let result: ClauseResult | null = null;
-    let mode: "live" | "fallback" = "live";
+    let result: ClauseResult;
+    let mode: "vetted" | "live";
     try {
-      // Mirror the in-app rule (src/main.ts): the recognized demo contract can fall
-      // back instantly, so it waits only BASE_MS; an arbitrary contract has no
-      // fallback and must be allowed to finish live. DEMO_AGENT_TIMEOUT_MS lets a
-      // rehearsal prove the live path on the demo contract without changing the
-      // on-stage default.
-      const BASE_MS = Number(process.env.DEMO_AGENT_TIMEOUT_MS) || 12_000;
-      const timeoutMs = armed ? BASE_MS : 45_000;
-      const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), timeoutMs);
-      const res = await fetch(`${url.origin}/api/analyze`, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ mode: "extract", contractText }),
-        signal: controller.signal,
-      });
-      clearTimeout(timer);
-      const data = (await res.json().catch(() => null)) as { result?: unknown } | null;
-      if (res.ok && data && isValidResult(data.result)) result = data.result;
+      ({ result, mode } = await reviewContract(contractText, (text) =>
+        liveExtract(url.origin, text),
+      ));
     } catch {
-      result = null;
-    }
-    if (!result && armed) {
-      result = SAMPLE_FALLBACK_RESULT;
-      mode = "fallback";
-    }
-    if (!result) {
       // Never a false table: an arbitrary file with no live review is skipped.
       return json(
         { error: "Could not review this contract live, and no vetted fallback exists for it." },

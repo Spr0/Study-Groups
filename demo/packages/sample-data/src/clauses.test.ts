@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import {
   buildExplainPrompt,
   buildExtractPrompt,
@@ -8,13 +8,16 @@ import {
   FIVE_CLAUSES,
   foundCount,
   isValidResult,
+  isVettedContract,
   NOT_FOUND,
   parseClauseResponse,
+  reviewContract,
   SAMPLE_CONTRACT_TEXT,
   SAMPLE_EXPLAIN_FALLBACKS,
   SAMPLE_FALLBACK_RESULT,
   STATUS_FOUND,
   STATUS_NOT_FOUND,
+  type ClauseResult,
 } from "./clauses";
 
 describe("the vetted sample fallback (the cached review the demo relies on)", () => {
@@ -130,6 +133,71 @@ describe("parseClauseResponse (the gate against a false table)", () => {
     expect(parseClauseResponse("{ broken json")).toBeNull();
     expect(parseClauseResponse(undefined)).toBeNull();
     expect(parseClauseResponse(42 as unknown as string)).toBeNull();
+  });
+});
+
+describe("isVettedContract (content-hash recognition of the demo contract)", () => {
+  it("recognizes the sample contract, and a whitespace/case variant of it", async () => {
+    expect(await isVettedContract(SAMPLE_CONTRACT_TEXT)).toBe(true);
+    // Only [a-z0-9] survive normalization, so reflowed whitespace, line breaks,
+    // and case (as a dropped PDF's extracted text differs) still match.
+    const reflowed = SAMPLE_CONTRACT_TEXT.replace(/\s+/g, " ").toUpperCase().trim();
+    expect(await isVettedContract(reflowed)).toBe(true);
+  });
+  it("does not recognize any other contract", async () => {
+    expect(await isVettedContract("Some other agreement between two other parties.")).toBe(false);
+    expect(await isVettedContract("")).toBe(false);
+  });
+});
+
+describe("reviewContract (the single shared entry point for both paths)", () => {
+  const liveResult: ClauseResult = {
+    clauses: FIVE_CLAUSES.map((name) => ({
+      name,
+      quote: `Live ${name} language.`,
+      plain: `Live ${name}.`,
+      status: STATUS_FOUND,
+    })),
+    raise: ["A live finding.", "Another live finding.", "A third.", "A fourth.", "A fifth."],
+  };
+
+  it("short-circuits the demo contract to the vetted result WITHOUT any inference attempt", async () => {
+    const runLive = vi.fn(async () => liveResult);
+    const outcome = await reviewContract(SAMPLE_CONTRACT_TEXT, runLive);
+    // The hash short-circuit precedes any inference: runLive is never reached.
+    expect(runLive).not.toHaveBeenCalled();
+    expect(outcome.mode).toBe("vetted");
+    expect(outcome.result).toBe(SAMPLE_FALLBACK_RESULT);
+    // Byte-for-byte the canonical three findings, regardless of path.
+    expect(outcome.result.raise).toEqual(SAMPLE_FALLBACK_RESULT.raise);
+    expect(outcome.result.raise).toHaveLength(3);
+  });
+
+  it("short-circuits a whitespace/case variant of the demo contract too", async () => {
+    const runLive = vi.fn(async () => liveResult);
+    const reflowed = SAMPLE_CONTRACT_TEXT.replace(/\s+/g, " ").toUpperCase().trim();
+    const outcome = await reviewContract(reflowed, runLive);
+    expect(runLive).not.toHaveBeenCalled();
+    expect(outcome.mode).toBe("vetted");
+    expect(outcome.result).toBe(SAMPLE_FALLBACK_RESULT);
+  });
+
+  it("runs live for any other contract and returns that result unchanged", async () => {
+    const runLive = vi.fn(async () => liveResult);
+    const outcome = await reviewContract("A wholly different contract.", runLive);
+    expect(runLive).toHaveBeenCalledTimes(1);
+    expect(runLive).toHaveBeenCalledWith("A wholly different contract.");
+    expect(outcome.mode).toBe("live");
+    expect(outcome.result).toBe(liveResult);
+  });
+
+  it("propagates a live failure (arbitrary contracts are never given a fabricated table)", async () => {
+    const runLive = vi.fn(async () => {
+      throw new Error("live review failed");
+    });
+    await expect(reviewContract("Another different contract.", runLive)).rejects.toThrow(
+      "live review failed",
+    );
   });
 });
 

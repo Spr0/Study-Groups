@@ -29,10 +29,10 @@ import { normalizeResultCopy, styleRaiseItems } from "./report-style";
 import {
   buildExtractPrompt,
   CONTRACT_OPTIONS,
-  fingerprintContract,
   FIVE_CLAUSES,
   isValidResult,
-  SAMPLE_CONTRACT_TEXT,
+  isVettedContract,
+  reviewContract,
   SAMPLE_EXPLAIN_FALLBACKS,
   STATUS_NOT_FOUND,
   type Clause,
@@ -61,7 +61,6 @@ interface RunSource {
 }
 let source: RunSource | null = null;
 let result: ClauseResult | null = null;
-let usedFallback = false;
 let approved: Approver | null = null;
 let busy = false;
 
@@ -78,13 +77,12 @@ void (async () => {
   }
 })();
 
-// The demo contract is recognized by CONTENT HASH, however it arrives
-// (dropped PDF, TXT, or pasted text): matching content arms the vetted
-// fallback, while any other contract goes to the model. Intake is exactly
-// two paths: drop/upload a PDF, or paste the text.
-let sampleFpPromise: Promise<string> | null = null;
-const sampleFingerprint = (): Promise<string> =>
-  (sampleFpPromise ??= fingerprintContract(SAMPLE_CONTRACT_TEXT));
+// The demo contract is recognized by CONTENT HASH, however it arrives (dropped
+// PDF, TXT, or pasted text): a content match returns the vetted result with no
+// model call, while any other contract goes to the model. Recognition and that
+// decision live in @sg/sample-data (reviewContract / isVettedContract), shared
+// verbatim with the watched-folder agent path. Intake is exactly two paths:
+// drop/upload a PDF, or paste the text.
 
 // =============================================================================
 // Input view
@@ -92,7 +90,6 @@ const sampleFingerprint = (): Promise<string> =>
 function renderInput(): void {
   result = null;
   approved = null;
-  usedFallback = false;
   app.innerHTML = `
   <div class="cl-input">
     <label class="field-label" for="cl-file">The contract</label>
@@ -119,7 +116,6 @@ function renderInput(): void {
 
     <div class="controls">
       <button id="cl-run" class="btn btn-primary" type="button" disabled>Review the clauses</button>
-      <label class="offline-toggle"><input type="checkbox" id="cl-offline" /> <span>Simulate offline (show fallback)</span></label>
     </div>
     <p class="standing-line">${escapeHtml(STANDING_LINE)}</p>
   </div>`;
@@ -156,10 +152,10 @@ function renderInput(): void {
     note.textContent = name ? `✓ ${name}` : "";
   }
 
-  // Both intake paths land here: the vetted fallback is keyed to CONTENT
-  // (fingerprint), never to how the contract arrived.
+  // Both intake paths land here: the vetted result is keyed to CONTENT
+  // (content hash), never to how the contract arrived.
   async function setSourceFromText(text: string, label: string): Promise<void> {
-    const matched = (await fingerprintContract(text)) === (await sampleFingerprint());
+    const matched = await isVettedContract(text);
     source = {
       label,
       contractText: text,
@@ -237,6 +233,33 @@ function renderInput(): void {
   refresh();
 }
 
+// Live model call with a hard timeout. The recognized demo contract never
+// reaches here (reviewContract short-circuits on the content hash first), so
+// this only ever guards a genuine live call for an arbitrary contract. It
+// throws on any failure, which the caller surfaces: an arbitrary contract is
+// never given a fabricated table.
+const LIVE_TIMEOUT_MS = 45_000;
+async function liveExtract(contractText: string): Promise<ClauseResult> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), LIVE_TIMEOUT_MS);
+  try {
+    const res = await fetch("/api/analyze", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ mode: "extract", contractText }),
+      signal: controller.signal,
+    });
+    const data: unknown = await res.json().catch(() => null);
+    const body = (data ?? {}) as { result?: unknown; error?: string };
+    if (!res.ok || body.error || !isValidResult(body.result)) {
+      throw new Error(body.error ?? "Could not read a result from the analysis. Try again.");
+    }
+    return body.result;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 async function run(
   setError: (msg: string | null) => void,
   runBtn: HTMLButtonElement,
@@ -246,50 +269,17 @@ async function run(
   runBtn.disabled = true;
   runBtn.textContent = "Reviewing the contract...";
   setError(null);
-  const offline = q<HTMLInputElement>("#cl-offline").checked;
 
-  // The vetted fallback exists only for the built-in samples. Never fabricate
-  // a result for an arbitrary contract.
-  const fallback = source.option?.fallbackResult ?? null;
-
-  if (offline && fallback) {
-    result = normalizeResultCopy(fallback);
-    usedFallback = true;
-    busy = false;
-    renderResults();
-    return;
-  }
-
-  // Live model call with a hard timeout: short when the vetted fallback is
-  // armed (the demo can never hang), generous for arbitrary contracts.
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), fallback ? 12_000 : 45_000);
   try {
-    const res = await fetch("/api/analyze", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ mode: "extract", contractText: source.contractText }),
-      signal: controller.signal,
-    });
-    const data: unknown = await res.json().catch(() => null);
-    const body = (data ?? {}) as { result?: unknown; error?: string };
-    if (!res.ok || body.error || !isValidResult(body.result)) {
-      throw new Error(body.error ?? "Could not read a result from the analysis. Try again.");
-    }
-    result = normalizeResultCopy(body.result);
-    usedFallback = false;
+    // The single shared entry point: content hash first (vetted result instantly
+    // for the demo contract), live inference for anything else. Same decision,
+    // same code, as the watched-folder agent path.
+    const outcome = await reviewContract(source.contractText, liveExtract);
+    result = normalizeResultCopy(outcome.result);
     renderResults();
   } catch (err) {
-    if (fallback) {
-      // The demo never dies: fall back to the vetted cached result.
-      result = normalizeResultCopy(fallback);
-      usedFallback = true;
-      renderResults();
-    } else {
-      setError(err instanceof Error ? err.message : "Analysis failed. Please try again.");
-    }
+    setError(err instanceof Error ? err.message : "Analysis failed. Please try again.");
   } finally {
-    clearTimeout(timer);
     busy = false;
     runBtn.disabled = !source;
     runBtn.textContent = "Review the clauses";
@@ -383,8 +373,6 @@ function renderResults(): void {
       </div>
       <button id="cl-new" class="btn-link" type="button">New review</button>
     </div>
-
-    ${usedFallback ? `<div class="saved-banner" role="status">Showing the saved example review. Live AI was unavailable, so the demo keeps going.</div>` : ""}
 
     <section class="cl-raise" aria-labelledby="cl-raise-h">
       <div class="cl-raise-head">
@@ -563,11 +551,14 @@ async function explain(btn: HTMLButtonElement): Promise<void> {
 
   btn.disabled = true;
   btn.textContent = "Explaining...";
-  const offline = usedFallback || !!q<HTMLInputElement | null>("#cl-offline", true)?.checked;
-  const vetted = source?.option ? SAMPLE_EXPLAIN_FALLBACKS[name] : undefined;
 
-  let text: string | null = null;
-  if (!offline) {
+  // The demo contract is deterministic on every path and run: its per-clause
+  // explanations are vetted and served with no model call, exactly like its
+  // extract short-circuit. Any other contract explains live.
+  const isVetted = !!source?.option;
+
+  let text: string | null = isVetted ? (SAMPLE_EXPLAIN_FALLBACKS[name] ?? null) : null;
+  if (!isVetted) {
     try {
       const res = await fetch("/api/analyze", {
         method: "POST",
@@ -590,7 +581,6 @@ async function explain(btn: HTMLButtonElement): Promise<void> {
   }
   if (!text) {
     text =
-      vetted ??
       "Live AI was unavailable and no saved explanation exists for this clause. Verify it directly against the contract.";
   }
 

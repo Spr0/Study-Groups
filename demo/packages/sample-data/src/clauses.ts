@@ -313,3 +313,44 @@ export async function fingerprintContract(text: string): Promise<string> {
   const digest = await globalThis.crypto.subtle.digest("SHA-256", bytes);
   return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, "0")).join("");
 }
+
+// The sample fingerprint is content, not input, so it is hashed once per process.
+let sampleFingerprintPromise: Promise<string> | null = null;
+function sampleFingerprint(): Promise<string> {
+  return (sampleFingerprintPromise ??= fingerprintContract(SAMPLE_CONTRACT_TEXT));
+}
+
+/** True when `text` is the vetted demo contract, recognized by content hash. */
+export async function isVettedContract(text: string): Promise<boolean> {
+  return (await fingerprintContract(text)) === (await sampleFingerprint());
+}
+
+// -----------------------------------------------------------------------------
+// reviewContract: THE single shared review entry point, used by BOTH the in-app
+// web-upload path (src/main.ts) and the watched-folder agent path
+// (netlify/functions/demo-agent.ts). There is no second copy of this decision.
+//
+// The content hash is computed FIRST, before any inference is attempted: a match
+// to the vetted demo contract returns SAMPLE_FALLBACK_RESULT immediately, with
+// no model call, no timeout, and no network dependency, so the demo renders the
+// same three findings on every path and every run. Any other contract goes to
+// live inference through the injected runLive callback, and its result is
+// returned unchanged. A live failure propagates to the caller: an arbitrary
+// contract is never given a fabricated table.
+// -----------------------------------------------------------------------------
+export type ReviewMode = "vetted" | "live";
+
+export interface ReviewOutcome {
+  result: ClauseResult;
+  mode: ReviewMode;
+}
+
+export async function reviewContract(
+  contractText: string,
+  runLive: (contractText: string) => Promise<ClauseResult>,
+): Promise<ReviewOutcome> {
+  if (await isVettedContract(contractText)) {
+    return { result: SAMPLE_FALLBACK_RESULT, mode: "vetted" };
+  }
+  return { result: await runLive(contractText), mode: "live" };
+}

@@ -24,6 +24,8 @@ export {
   foundCount,
   normalizeForFingerprint,
   fingerprintContract,
+  isVettedContract,
+  reviewContract,
 } from "./clauses";
 export type {
   Clause,
@@ -32,4 +34,6 @@ export type {
   AnalyzeRequest,
   ExtractRequest,
   ExplainRequest,
+  ReviewMode,
+  ReviewOutcome,
 } from "./clauses";

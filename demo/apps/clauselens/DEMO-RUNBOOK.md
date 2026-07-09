@@ -27,8 +27,9 @@ printf 'DEMO_AGENT=1\n' > .env        # turns the demo agent on, LOCAL ONLY
    ```
 2. **Start the app** (terminal 2). Pass the vars inline; process env always
    wins even when the CLI skips .env injection. `analyze.ts` returns 503
-   without **either** the key or the model, and the agent then silently falls
-   back, so set both to run the review live:
+   without **either** the key or the model; the demo contract still renders
+   from the vetted result by content hash, but set both so an unrecognized PDF
+   can run live:
    ```bash
    cd ~/Projects/Study-Groups/demo/apps/clauselens
    export NVM_DIR="$HOME/.nvm" && . "$NVM_DIR/nvm.sh"
@@ -43,10 +44,12 @@ printf 'DEMO_AGENT=1\n' > .env        # turns the demo agent on, LOCAL ONLY
 4. **Open two browser tabs**: `http://localhost:8888` (the app) and
    `http://localhost:8025` (the Mailpit inbox). Put the inbox on the second
    screen or a background tab.
-5. **Wifi check**: with wifi ON, the initial review runs live (10-25s, 12s
-   timeout). With wifi OFF, the dropped demo PDF is recognized by content
-   hash and serves the vetted review instantly. Every beat after the review
-   is localhost and does not care about wifi. Rehearse once with wifi off.
+5. **Wifi check**: the dropped demo PDF is recognized by content hash and
+   serves the vetted review instantly, wifi ON or OFF, on both the in-app and
+   the watched-folder path (no model call, no timeout, no network). Only a
+   different, unrecognized PDF goes live (10-25s). Every beat after the review
+   is localhost and does not care about wifi. Rehearse once with wifi off to
+   confirm the demo contract is unchanged.
 6. Have `agent-demo/cascade-ridge-subcontract.pdf` visible in a Finder window,
    ready to drag.
 
@@ -55,9 +58,9 @@ printf 'DEMO_AGENT=1\n' > .env        # turns the demo agent on, LOCAL ONLY
 Start the watcher (terminal 4): `node agent-demo/watch-folder.mjs`
 It watches `agent-demo/drop/` and logs one line per file.
 
-To prove live on the demo contract in rehearsal, set
-`DEMO_AGENT_TIMEOUT_MS=45000` before starting the app; the watcher log reads
-`(live)`. Unset it for the stage run to keep the 12s no-stall default.
+The demo contract is always served from the vetted result by content hash, so
+the watcher log reads `(vetted)` for it. To see the live path in rehearsal,
+drop a different (unrecognized) PDF instead; that log line reads `(live)`.
 
 The watcher watches `agent-demo/drop/` by default. To point it at any folder,
 set `DEMO_WATCH_DIR=/absolute/path` before `node agent-demo/watch-folder.mjs`.
@@ -94,8 +97,9 @@ inbox is fallback two.
 
 ## If something breaks
 
-- Review hangs or errors: the fallback fires by itself within 12s for the
-  demo PDF. Keep talking; the UI is identical.
+- Review hangs or errors: cannot happen for the demo PDF. It is served from
+  the vetted result instantly by content hash, with no model call to hang.
+  Only an unrecognized PDF makes a live call at all.
 - App down entirely: the seeded Mailpit mailbox already holds both emails.
   Narrate the flow from the inbox: open the approval email, describe the
   click, open the signatory email.
