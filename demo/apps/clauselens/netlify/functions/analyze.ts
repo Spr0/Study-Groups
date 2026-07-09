@@ -7,7 +7,8 @@
 // the browser. The model comes from ANTHROPIC_MODEL with no fallback (fails
 // loudly if unset). Contract text is processed in memory, never logged or
 // persisted. Errors are sanitized; the client holds the vetted sample fallback.
-// Extraction runs at temperature 0 so the same contract reviews the same way.
+// No `temperature` is sent: it is deprecated on current models (sending it is a
+// 400), so the param is omitted entirely rather than pinned to an older model.
 // =============================================================================
 import type { Config, Context } from "@netlify/functions";
 import Anthropic from "@anthropic-ai/sdk";
@@ -49,6 +50,23 @@ function json(body: unknown, status = 200): Response {
   });
 }
 
+// The exact request body for a model call. No `temperature`: it is deprecated
+// on current models (sending it returns a 400), so the key is omitted entirely.
+// Exported so a unit test can assert the request carries no temperature key.
+export function buildModelRequest(opts: {
+  model: string;
+  system: string;
+  userText: string;
+  maxTokens: number;
+}): Anthropic.MessageCreateParamsNonStreaming {
+  return {
+    model: opts.model,
+    max_tokens: opts.maxTokens,
+    system: opts.system,
+    messages: [{ role: "user", content: opts.userText }],
+  };
+}
+
 async function callModel(opts: {
   apiKey: string;
   model: string;
@@ -57,13 +75,14 @@ async function callModel(opts: {
   maxTokens: number;
 }): Promise<string> {
   const client = new Anthropic({ apiKey: opts.apiKey });
-  const msg = await client.messages.create({
-    model: opts.model,
-    max_tokens: opts.maxTokens,
-    temperature: 0,
-    system: opts.system,
-    messages: [{ role: "user", content: opts.userText }],
-  });
+  const msg = await client.messages.create(
+    buildModelRequest({
+      model: opts.model,
+      system: opts.system,
+      userText: opts.userText,
+      maxTokens: opts.maxTokens,
+    }),
+  );
   const text = msg.content.find((b) => b.type === "text")?.text ?? "";
   if (!text) throw new Error("empty model response");
   return text;

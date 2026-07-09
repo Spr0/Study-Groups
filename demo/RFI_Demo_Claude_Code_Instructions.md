@@ -30,7 +30,7 @@ Styled to match the Study Groups kit. The room should leave thinking "I could ru
 
 - Plain static front end: `index.html`, `styles.css`, `app.js`. No framework.
 - One **Netlify serverless function** that holds the Anthropic key and calls Claude. The key is **never** in the browser.
-- `@anthropic-ai/sdk`, model **`claude-sonnet-4-6`** (swap to a newer Sonnet if available). `max_tokens` ~1500, low temperature for consistency.
+- `@anthropic-ai/sdk`, model **`claude-sonnet-4-6`** (swap to a newer Sonnet if available). `max_tokens` ~1500. Do **not** send `temperature`: it is deprecated on current models (sending it returns a 400).
 - Prefer **streaming** the draft for the live effect. If streaming through the function is awkward on the platform, fall back to a single non-streamed call with a "Drafting…" state and a brief reveal animation. Reliability beats the typewriter effect.
 
 ## Repo structure

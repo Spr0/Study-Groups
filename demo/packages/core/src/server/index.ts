@@ -34,6 +34,23 @@ function savedExample(draft: string, reason: string): Response {
   return json({ source: "saved-example", fallback: true, reason, draft });
 }
 
+// The exact request body for the streaming draft call. No `temperature`: it is
+// deprecated on current models (sending it returns a 400), so the key is
+// omitted entirely. Exported so a unit test can assert no temperature is sent.
+export function buildDraftStreamRequest(opts: {
+  model: string;
+  maxTokens: number;
+  systemPrompt: string;
+  prompt: string;
+}): Anthropic.MessageStreamParams {
+  return {
+    model: opts.model,
+    max_tokens: opts.maxTokens,
+    system: opts.systemPrompt,
+    messages: [{ role: "user", content: opts.prompt }],
+  };
+}
+
 export type DraftHandler = (req: Request) => Promise<Response>;
 
 export function createDraftHandler(config: DraftHandlerConfig): DraftHandler {
@@ -94,13 +111,9 @@ export function createDraftHandler(config: DraftHandlerConfig): DraftHandler {
     let messageStream: ReturnType<Anthropic["messages"]["stream"]>;
     try {
       const client = new Anthropic({ apiKey });
-      messageStream = client.messages.stream({
-        model,
-        max_tokens: maxTokens,
-        temperature: 0.2,
-        system: uc.systemPrompt,
-        messages: [{ role: "user", content: prompt }],
-      });
+      messageStream = client.messages.stream(
+        buildDraftStreamRequest({ model, maxTokens, systemPrompt: uc.systemPrompt, prompt }),
+      );
     } catch {
       return savedExample(resolved.fallbackDraft, "init-error");
     }
