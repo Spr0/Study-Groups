@@ -37,10 +37,20 @@ printf 'DEMO_AGENT=1\n' > .env        # turns the demo agent on, LOCAL ONLY
    # app + functions on http://localhost:8888
    ```
    Confirm: `curl -s localhost:8888/api/demo/health` returns `"demo":true`.
-3. **Seed the fallback mailbox** (terminal 3, once):
+3. **Seed and rehearse, then reset to zero** (terminal 3):
    ```bash
    node agent-demo/seed-inbox.mjs
    ```
+   This writes the two chain messages (the approval, then the signed summary
+   with the reviewer on **Cc**) into the same persistent Mailpit DB. Use it to
+   rehearse and to capture the break-glass screenshots. Then, **before the live
+   run, clear Mailpit** (Delete all in the inbox UI) so the room starts empty.
+   **Confirm: the Mailpit inbox shows 0 messages before you begin.** A clean run
+   then shows exactly two: the approval (To: you) and the signed summary (To:
+   Dana, Cc: you). If you would rather keep the seeded pair as your live
+   fallback, leave them, but expect four in the view and say the first two are
+   the seed. (Mailpit is a single catch-all viewer with no per-person mailbox;
+   with only these two messages it reads as the reviewer's inbox.)
 4. **Open two browser tabs**: `http://localhost:8888` (the app) and
    `http://localhost:8025` (the Mailpit inbox). Put the inbox on the second
    screen or a background tab.
@@ -77,7 +87,8 @@ A file that fails to process is left in place and logged, not moved.
    0.5s after the file stops growing; review is instant on the recognized
    demo contract, 10-25s live for any other PDF). Switch to the inbox.
 3. From here the chain is identical: open the email, click "Sign off and send
-   to the signatory", the signed summary renders, the signatory email lands.
+   to the signatory", the signed summary renders, the signatory email lands as
+   ONE message, To: Dana Whitfield and Cc: the reviewer (you keep a copy).
 4. On success the file moves to `agent-demo/drop/Processed/` (original name
    kept; a same-named file gets a timestamp, never overwritten), so each drop
    runs exactly once; dropping it again later is a deliberate fresh run. A file
@@ -97,17 +108,21 @@ inbox is fallback two.
 5. Switch to the Mailpit tab: the sign-off request is at the top. Open it.
 6. Click "Sign off and send to the signatory". The signed summary page
    renders; raise items marked REVIEWED; your click was the signature.
-7. Back to Mailpit: the reviewed summary to Dana Whitfield (fictional
-   signatory, Summit Mechanical) is at the top.
+7. Back to Mailpit: the reviewed summary is at the top, one message addressed
+   To: Dana Whitfield (fictional signatory, Summit Mechanical) and Cc: the
+   reviewer. Your inbox now legitimately holds both beats: the approval request
+   (To: you) and the signed summary (Cc: you). The reviewer signed and routed
+   it and keeps a copy; it is one message with two recipients, not two.
 
 ## If something breaks
 
 - Review hangs or errors: cannot happen for the demo PDF. It is served from
   the vetted result instantly by content hash, with no model call to hang.
   Only an unrecognized PDF makes a live call at all.
-- App down entirely: the seeded Mailpit mailbox already holds both emails.
-  Narrate the flow from the inbox: open the approval email, describe the
-  click, open the signatory email.
+- App down entirely: if you kept the seeded pair, narrate the flow from the
+  Mailpit inbox (approval, then the signed summary To: Dana / Cc: you). If you
+  reset Mailpit to zero for a clean run, narrate from the rehearsal screenshots
+  / recording instead (the nuclear option below).
 - Mailpit down: restart terminal 1; the database file preserves the seed.
 - Nuclear option: the rehearsal screenshots / recording (capture during your
   own rehearsal run).

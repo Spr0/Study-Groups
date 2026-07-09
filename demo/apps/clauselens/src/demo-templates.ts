@@ -142,6 +142,8 @@ export function buildSignedSummaryText(p: SignoffPayload): string {
 export interface EmailContent {
   from: { name: string; email: string };
   to: { name: string; email: string };
+  /** Optional carbon copy. Only the signatory email sets this (the reviewer). */
+  cc?: { name: string; email: string };
   subject: string;
   text: string;
   html: string;
@@ -267,6 +269,9 @@ export function buildSignatoryEmail(p: SignoffPayload): EmailContent {
   return {
     from: FICTIONAL_SENDER,
     to: { name: FICTIONAL_SIGNATORY.name, email: FICTIONAL_SIGNATORY.email },
+    // The reviewer who signed and routed this keeps a copy via Cc: the same
+    // fictional .test address that received the approval email. No new address.
+    cc: { name: p.reviewer.name, email: FICTIONAL_REVIEWER_EMAIL },
     subject,
     text,
     html,

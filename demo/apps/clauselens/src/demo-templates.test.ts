@@ -90,12 +90,21 @@ describe("the two emails", () => {
     expect(signatory.text).toContain("No Liability Cap");
     expect(signatory.html).toContain("[REVIEWED]");
   });
+  it("signatory email carries exactly one Cc, the reviewer; the approval email carries none", () => {
+    // One Cc, the same fictional reviewer address that received the approval.
+    expect(signatory.cc).toEqual({ name: payload.reviewer.name, email: FICTIONAL_REVIEWER_EMAIL });
+    expect(signatory.cc?.email).toBe(FICTIONAL_REVIEWER_EMAIL);
+    expect(signatory.cc?.email).toBe(approval.to.email); // same reviewer, no new address
+    // The approval email is unchanged: no Cc.
+    expect(approval.cc).toBeUndefined();
+  });
   it("every address in the system is on the reserved .test TLD (unroutable)", () => {
     for (const addr of [
       approval.to.email,
       approval.from.email,
       signatory.to.email,
       signatory.from.email,
+      signatory.cc!.email,
       FICTIONAL_SENDER.email,
     ]) {
       expect(addr).toMatch(/\.test$/);
