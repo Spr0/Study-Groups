@@ -191,6 +191,27 @@ describe("reviewContract (the single shared entry point for both paths)", () => 
     expect(outcome.result).toBe(liveResult);
   });
 
+  // The pair to the short-circuit test above: a contract whose content hash does
+  // NOT match the demo (here a Revision B with the three demo defects corrected,
+  // as in the cascade-ridge-subcontract-rev-b.pdf rehearsal artifact) must
+  // proceed to an inference attempt. The model call is mocked; we assert only
+  // that it was invoked, never that it returns a specific result.
+  it("a non-matching revision (defects corrected) proceeds to an inference attempt", async () => {
+    const revisedContract = [
+      "SUBCONTRACT AGREEMENT (REVISION B)",
+      "7. LIMITATION OF LIABILITY: aggregate liability shall not exceed the Subcontract amount.",
+      "6. INDEMNIFICATION: each party indemnifies the other; this obligation is mutual and reciprocal.",
+      "4. TERMINATION: either party may terminate for its convenience upon thirty days notice.",
+    ].join("\n");
+    expect(await isVettedContract(revisedContract)).toBe(false);
+
+    const modelCall = vi.fn(async () => liveResult);
+    const outcome = await reviewContract(revisedContract, modelCall);
+    expect(modelCall).toHaveBeenCalledTimes(1);
+    expect(modelCall).toHaveBeenCalledWith(revisedContract);
+    expect(outcome.mode).toBe("live");
+  });
+
   it("propagates a live failure (arbitrary contracts are never given a fabricated table)", async () => {
     const runLive = vi.fn(async () => {
       throw new Error("live review failed");

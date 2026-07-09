@@ -64,8 +64,11 @@ drop a different (unrecognized) PDF instead; that log line reads `(live)`.
 
 The watcher watches `agent-demo/drop/` by default. To point it at any folder,
 set `DEMO_WATCH_DIR=/absolute/path` before `node agent-demo/watch-folder.mjs`.
-It creates the folder and a `processed/` subfolder if missing, picks up `.pdf`
-and `.txt` only, and moves handled files to `processed/`.
+It creates a `Processed/` subfolder if missing (excluded from the watch), picks
+up `.pdf` and `.txt` only, and on success moves the file into `Processed/` with
+its original name. A same-named file already there gets a timestamp
+(`cascade-ridge-subcontract.2026-07-09T1432.pdf`); nothing is ever overwritten.
+A file that fails to process is left in place and logged, not moved.
 
 1. Drag `cascade-ridge-subcontract.pdf` into the `agent-demo/drop/` folder in
    Finder. That is the whole input: the agent acts only on files in this one
@@ -75,9 +78,11 @@ and `.txt` only, and moves handled files to `processed/`.
    demo contract, 10-25s live for any other PDF). Switch to the inbox.
 3. From here the chain is identical: open the email, click "Sign off and send
    to the signatory", the signed summary renders, the signatory email lands.
-4. Processed files move to `agent-demo/drop/processed/`, so each drop runs
-   exactly once; dropping the file again later is a deliberate fresh run.
-   Non-PDF/TXT files are ignored silently.
+4. On success the file moves to `agent-demo/drop/Processed/` (original name
+   kept; a same-named file gets a timestamp, never overwritten), so each drop
+   runs exactly once; dropping it again later is a deliberate fresh run. A file
+   that fails is left in place and logged. Non-PDF/TXT files are ignored
+   silently.
 
 If the watcher is down, the in-app run below is fallback one; the seeded
 inbox is fallback two.
