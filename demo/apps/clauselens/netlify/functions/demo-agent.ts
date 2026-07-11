@@ -35,7 +35,9 @@ import {
   isCompletePayload,
   type SignoffPayload,
 } from "../../src/demo-templates";
-import { sendMail } from "./_demo/smtp";
+import { sendMail, type MailAttachment } from "./_demo/smtp";
+import { existsSync } from "node:fs";
+import { join } from "node:path";
 
 function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
@@ -54,6 +56,21 @@ const smtp = (): { host: string; port: number } => ({
   host: process.env.DEMO_SMTP_HOST ?? "localhost",
   port: Number(process.env.DEMO_SMTP_PORT ?? "1025"),
 });
+
+// The staged demo PDFs live in agent-demo/ (resolved against the function's cwd;
+// DEMO_STAGED_DIR overrides). Every email in a chain attaches the contract PDF
+// current at that point, referenced by path and read at send time (never
+// copied), with its exact filename. A source with no staged PDF gets none.
+const STAGED_DIR = process.env.DEMO_STAGED_DIR ?? join(process.cwd(), "agent-demo");
+const STAGED_PDFS = new Set([
+  "cascade-ridge-subcontract.pdf",
+  "cascade-ridge-subcontract-rev-b.pdf",
+]);
+function stagedAttachments(source: string): MailAttachment[] {
+  if (!STAGED_PDFS.has(source)) return [];
+  const path = join(STAGED_DIR, source);
+  return existsSync(path) ? [{ filename: source, path }] : [];
+}
 
 // Live inference for an arbitrary contract: POST to the shared /api/analyze
 // endpoint (the one model call, no duplicate). The recognized demo contract
@@ -154,7 +171,11 @@ export default async (req: Request, _context: Context): Promise<Response> => {
     }
     const signoffUrl = `${url.origin}/api/demo/signoff?p=${encodePayload(payload)}`;
     try {
-      await sendMail({ ...smtp(), ...buildApprovalEmail(payload, signoffUrl) });
+      await sendMail({
+        ...smtp(),
+        ...buildApprovalEmail(payload, signoffUrl),
+        attachments: stagedAttachments(payload.source),
+      });
     } catch (err) {
       return json(
         { error: err instanceof Error ? err.message : "Could not reach the local inbox." },
@@ -181,7 +202,11 @@ export default async (req: Request, _context: Context): Promise<Response> => {
     }
     const signoffUrl = `${url.origin}/api/demo/signoff?p=${encodePayload(payload)}`;
     try {
-      await sendMail({ ...smtp(), ...buildApprovalEmail(payload, signoffUrl) });
+      await sendMail({
+        ...smtp(),
+        ...buildApprovalEmail(payload, signoffUrl),
+        attachments: stagedAttachments(payload.source),
+      });
     } catch (err) {
       return json(
         { error: err instanceof Error ? err.message : "Could not reach the local inbox." },
@@ -203,7 +228,11 @@ export default async (req: Request, _context: Context): Promise<Response> => {
       );
     }
     try {
-      await sendMail({ ...smtp(), ...buildSignatoryEmail(p) });
+      await sendMail({
+        ...smtp(),
+        ...buildSignatoryEmail(p),
+        attachments: stagedAttachments(p.source),
+      });
     } catch (err) {
       return html(
         `<p style="font-family:sans-serif">Signed, but the local inbox is unreachable: ${

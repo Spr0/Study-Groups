@@ -5,6 +5,21 @@
 // beyond these ~90 lines.
 // =============================================================================
 import net from "node:net";
+import { readFileSync } from "node:fs";
+
+/** An attachment referenced by path: the staged file is read at send time and
+ *  never copied. `filename` is preserved exactly as the recipient sees it. */
+export interface MailAttachment {
+  filename: string;
+  path: string;
+}
+
+/** An attachment whose bytes have been read (path resolved). buildMessage is
+ *  pure over this so its MIME output can be unit-tested without the filesystem. */
+export interface ResolvedAttachment {
+  filename: string;
+  content: Uint8Array;
+}
 
 export interface MailInput {
   host: string;
@@ -16,6 +31,8 @@ export interface MailInput {
   subject: string;
   text: string;
   html: string;
+  /** PDF attachments, referenced by path; read at send time, never copied. */
+  attachments?: MailAttachment[];
 }
 
 function expectCode(line: string, codes: number[]): void {
@@ -38,13 +55,24 @@ export function envelopeRecipients(mail: MailInput): string[] {
   return mail.cc ? [mail.to.email, mail.cc.email] : [mail.to.email];
 }
 
+/** base64 body, wrapped at 76 columns per RFC 2045. */
+function base64Wrapped(bytes: Uint8Array): string {
+  return (Buffer.from(bytes).toString("base64").match(/.{1,76}/g) ?? []).join("\r\n");
+}
+
 /**
- * The RFC 5322 message: From, To, an optional single Cc, then the multipart
- * body. Pure and exported so the header shape (exactly one Cc, only when set)
- * is unit-tested. The boundary is injectable for deterministic tests.
+ * The RFC 5322 message: From, To, an optional single Cc, then the body. Pure and
+ * exported so the shape (exactly one Cc; one attachment part per file, only when
+ * present) is unit-tested. The boundary is injectable for deterministic tests.
+ *
+ * With no attachments the body is a multipart/alternative, byte-for-byte as
+ * before. With attachments it is a multipart/mixed wrapping that alternative
+ * plus one application/pdf part per file; the recipient set is unchanged, so it
+ * is still ONE stored message per send.
  */
 export function buildMessage(
   mail: MailInput,
+  attachments: ResolvedAttachment[] = [],
   boundary = `demo-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
 ): string {
   const headers = [
@@ -58,31 +86,63 @@ export function buildMessage(
     header("Subject", mail.subject),
     header("Date", new Date().toUTCString()),
     header("MIME-Version", "1.0"),
-    header("Content-Type", `multipart/alternative; boundary="${boundary}"`),
   );
-  return [
-    ...headers,
-    "",
-    `--${boundary}`,
+
+  const alt = (b: string): string[] => [
+    `--${b}`,
     header("Content-Type", "text/plain; charset=utf-8"),
     "",
     mail.text,
     "",
-    `--${boundary}`,
+    `--${b}`,
     header("Content-Type", "text/html; charset=utf-8"),
     "",
     mail.html,
     "",
-    `--${boundary}--`,
-    "",
-  ]
-    .join("\r\n")
-    // Dot-stuffing per RFC 5321 4.5.2
-    .replace(/\r\n\./g, "\r\n..");
+    `--${b}--`,
+  ];
+
+  let lines: string[];
+  if (attachments.length === 0) {
+    headers.push(header("Content-Type", `multipart/alternative; boundary="${boundary}"`));
+    lines = [...headers, "", ...alt(boundary), ""];
+  } else {
+    const altBoundary = `${boundary}-alt`;
+    headers.push(header("Content-Type", `multipart/mixed; boundary="${boundary}"`));
+    lines = [
+      ...headers,
+      "",
+      `--${boundary}`,
+      header("Content-Type", `multipart/alternative; boundary="${altBoundary}"`),
+      "",
+      ...alt(altBoundary),
+      "",
+    ];
+    for (const att of attachments) {
+      lines.push(
+        `--${boundary}`,
+        header("Content-Type", `application/pdf; name="${att.filename}"`),
+        header("Content-Transfer-Encoding", "base64"),
+        header("Content-Disposition", `attachment; filename="${att.filename}"`),
+        "",
+        base64Wrapped(att.content),
+        "",
+      );
+    }
+    lines.push(`--${boundary}--`, "");
+  }
+
+  // Dot-stuffing per RFC 5321 4.5.2 (base64 lines never begin with '.').
+  return lines.join("\r\n").replace(/\r\n\./g, "\r\n..");
 }
 
 export function sendMail(mail: MailInput): Promise<void> {
-  const message = buildMessage(mail);
+  // Referenced by path, read here at send time, never copied.
+  const resolved: ResolvedAttachment[] = (mail.attachments ?? []).map((a) => ({
+    filename: a.filename,
+    content: readFileSync(a.path),
+  }));
+  const message = buildMessage(mail, resolved);
 
   return new Promise((resolve, reject) => {
     const socket = net.createConnection({ host: mail.host, port: mail.port });
