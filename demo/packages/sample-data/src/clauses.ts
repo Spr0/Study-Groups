@@ -169,6 +169,115 @@ export const SAMPLE_EXPLAIN_FALLBACKS: Record<string, string> = {
     "This language was selected because it is the one-way indemnity: the Subcontractor covers the Contractor and Owner, limited to the Subcontractor's own negligence. The limitation ('but only to the extent') is protective; the one-way direction is worth raising.",
 };
 
+// =============================================================================
+// Rev B: the SECOND vetted contract. A fictional Revision B of the sample with
+// all three defects corrected (cap present and expressly covering indemnity,
+// mutual indemnity, mutual termination). Its canonical review is the FROZEN,
+// signed-off result of the 2026-07-11 live run against
+// cascade-ridge-subcontract-rev-b.pdf (content hash f12668ade5e873a6...): five
+// clauses Found and a five-item advisory raise list. Verbatim as reviewed;
+// apostrophes normalized to ASCII to match the codebase. Must never drift
+// (regression-tested in clauses.test.ts; the shipped PDF is checked against it).
+// -----------------------------------------------------------------------------
+export const REV_B_CONTRACT_NAME =
+  "Cascade Ridge - Lakeview Medical Office Subcontract, Revision B (sample)";
+
+export const REV_B_CONTRACT_TEXT = `SUBCONTRACT AGREEMENT (REVISION B)
+
+This Subcontract Agreement ("Agreement") is entered into between Cascade Ridge Construction ("Contractor") and Summit Mechanical Services LLC ("Subcontractor") for work on the Lakeview Medical Office project located in Bellingham, WA. This Revision B supersedes the prior draft and reflects the negotiated, balanced terms.
+
+1. SCOPE OF WORK
+Subcontractor shall furnish all labor, materials, and equipment necessary to complete the HVAC and plumbing rough-in for the Lakeview Medical Office, in accordance with the Contract Documents and the project schedule.
+
+2. TERM
+This Agreement shall commence on the Effective Date and shall remain in effect until Subcontractor's work is finally completed and accepted, but in no event later than eighteen (18) months from the Effective Date, unless extended by written change order signed by both parties.
+
+3. PAYMENT
+Contractor shall pay Subcontractor for work satisfactorily completed within thirty (30) days following Contractor's receipt of Subcontractor's approved monthly application for payment. Contractor shall retain five percent (5%) of each progress payment as retainage, to be released within sixty (60) days of final acceptance.
+
+4. TERMINATION
+Either party may terminate this Agreement for its convenience upon thirty (30) days written notice to the other party. Either party may terminate for cause if the other party fails to cure a material default within fourteen (14) days of written notice. Upon termination for convenience, Subcontractor shall be paid for work properly performed through the date of termination plus reasonable demobilization and close-out costs.
+
+5. INSURANCE
+Subcontractor shall maintain commercial general liability insurance with limits of not less than $1,000,000 per occurrence and shall name Contractor as an additional insured.
+
+6. INDEMNIFICATION
+To the fullest extent permitted by law, each party shall indemnify, defend, and hold harmless the other party from and against any claims, damages, losses, and expenses, including reasonable attorneys' fees, but only to the extent caused by the negligent acts or omissions of the indemnifying party. This indemnification obligation is mutual and reciprocal.
+
+7. LIMITATION OF LIABILITY
+Each party's aggregate liability arising out of or related to this Agreement, including its indemnification obligations under Section 6, shall not exceed the total Subcontract amount paid or payable under this Agreement. This limitation does not apply to claims for third-party bodily injury, which remain outside the cap.
+
+8. GOVERNING LAW
+This Agreement shall be governed by the laws of the State of Washington.
+
+IN WITNESS WHEREOF, the parties have executed this Agreement as of the Effective Date.`;
+
+export const REV_B_FALLBACK_RESULT: ClauseResult = {
+  clauses: [
+    {
+      name: "Term",
+      quote:
+        "This Agreement shall commence on the Effective Date and shall remain in effect until Subcontractor's work is finally completed and accepted, but in no event later than eighteen (18) months from the Effective Date, unless extended by written change order signed by both parties.",
+      plain:
+        "The agreement runs from the start date until the work is finished and accepted, but no longer than 18 months unless both parties sign a change order to extend it.",
+      status: STATUS_FOUND,
+    },
+    {
+      name: "Payment",
+      quote:
+        "Contractor shall pay Subcontractor for work satisfactorily completed within thirty (30) days following Contractor's receipt of Subcontractor's approved monthly application for payment. Contractor shall retain five percent (5%) of each progress payment as retainage, to be released within sixty (60) days of final acceptance.",
+      plain:
+        "The contractor pays the subcontractor within 30 days of an approved monthly invoice, holding back 5% of each payment as retainage until 60 days after final acceptance.",
+      status: STATUS_FOUND,
+    },
+    {
+      name: "Termination",
+      quote:
+        "Either party may terminate this Agreement for its convenience upon thirty (30) days written notice to the other party. Either party may terminate for cause if the other party fails to cure a material default within fourteen (14) days of written notice. Upon termination for convenience, Subcontractor shall be paid for work properly performed through the date of termination plus reasonable demobilization and close-out costs.",
+      plain:
+        "Either party can end the contract for any reason with 30 days notice, or for cause if a default is not fixed within 14 days, and if terminated for convenience the subcontractor is paid for completed work plus reasonable wind-down costs.",
+      status: STATUS_FOUND,
+    },
+    {
+      name: "Liability Cap",
+      quote:
+        "Each party's aggregate liability arising out of or related to this Agreement, including its indemnification obligations under Section 6, shall not exceed the total Subcontract amount paid or payable under this Agreement. This limitation does not apply to claims for third-party bodily injury, which remain outside the cap.",
+      plain:
+        "Neither party has to pay more in total than the full subcontract price, except for third party bodily injury claims which are not capped.",
+      status: STATUS_FOUND,
+    },
+    {
+      name: "Indemnity",
+      quote:
+        "To the fullest extent permitted by law, each party shall indemnify, defend, and hold harmless the other party from and against any claims, damages, losses, and expenses, including reasonable attorneys' fees, but only to the extent caused by the negligent acts or omissions of the indemnifying party. This indemnification obligation is mutual and reciprocal.",
+      plain:
+        "Each party agrees to cover the other party's claims, damages, and legal fees, but only for the portion caused by its own negligence, and this duty applies equally to both sides.",
+      status: STATUS_FOUND,
+    },
+  ],
+  raise: [
+    "No waiver of consequential, indirect, or delay damages is included, which could expose either party to broader claims.",
+    "No dispute resolution mechanism (mediation, arbitration, or venue/forum selection) is specified beyond governing law.",
+    "Retainage release is tied to 'final acceptance' with no defined timeline for when that acceptance must occur, which could delay payment indefinitely.",
+    "Insurance requirement only specifies commercial general liability at $1,000,000 per occurrence; no umbrella, professional liability, auto, or workers' compensation limits are stated.",
+    "No notice or claims period is specified for indemnity or liability cap disputes (e.g., time limit to bring a claim).",
+  ],
+};
+
+// Vetted per-clause explanations for Rev B (authored to describe the corrected
+// clauses; served by Explain with no model call, exactly like the sample's).
+export const REV_B_EXPLAIN_FALLBACKS: Record<string, string> = {
+  Term: "This language sets both ends of the engagement: the work-complete-and-accepted trigger and a hard 18-month outer limit, extendable only by a signed change order. The outer limit protects the Subcontractor from an open-ended obligation; a reviewer should confirm 18 months is realistic for the scope.",
+  Payment:
+    "This fixes the payment clock at 30 days from an approved monthly application and sets retainage at 5 percent, released 60 days after final acceptance. Both figures drive the Subcontractor's cash flow; a reviewer should confirm the retainage release is not left open-ended (see the raise list).",
+  Termination:
+    "Termination for convenience is mutual here: either party on 30 days notice, and a convenience termination pays the Subcontractor for completed work plus reasonable demobilization and close-out costs. That two-way symmetry and the close-out payment are what make it balanced; a reviewer should still confirm the 14-day cure window is workable.",
+  "Liability Cap":
+    "A cap is present and, importantly, it expressly covers the indemnification obligations, so indemnity does not create uncapped exposure. The only carve-out is third-party bodily injury, which sits outside the cap. A reviewer should confirm the cap amount (the total Subcontract amount) is adequate for the project's risk.",
+  Indemnity:
+    "Indemnity is mutual and reciprocal, and each party's duty is limited to the portion of a loss caused by its own negligence. That fault-based, two-way structure is balanced; because indemnity is also subject to the liability cap in Section 7, a reviewer should read the two clauses together.",
+};
+
 // -----------------------------------------------------------------------------
 // Prompts (pure, testable). The extract prompt is shown verbatim in the UI's
 // prompt peek and sent to the model.
@@ -314,15 +423,61 @@ export async function fingerprintContract(text: string): Promise<string> {
   return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
-// The sample fingerprint is content, not input, so it is hashed once per process.
-let sampleFingerprintPromise: Promise<string> | null = null;
-function sampleFingerprint(): Promise<string> {
-  return (sampleFingerprintPromise ??= fingerprintContract(SAMPLE_CONTRACT_TEXT));
+// -----------------------------------------------------------------------------
+// The vetted registry: the ONE source of truth for every frozen contract. Each
+// entry pairs a canonical contract text (recognized by its content hash) with
+// the vetted review and the per-clause Explain text served on a match. Today:
+// the original demo contract and Rev B. reviewContract short-circuits on ANY of
+// these; anything else goes to live inference.
+// -----------------------------------------------------------------------------
+export interface VettedContract {
+  id: string;
+  /** Canonical contract text; the recognition key is its content fingerprint. */
+  contractText: string;
+  /** The frozen, vetted review served instantly on a content-hash match. */
+  fallbackResult: ClauseResult;
+  /** Per-clause vetted explanations served by Explain with no model call. */
+  explainFallbacks: Record<string, string>;
 }
 
-/** True when `text` is the vetted demo contract, recognized by content hash. */
+export const VETTED_CONTRACTS: VettedContract[] = [
+  {
+    id: "cascade-ridge-subcontract",
+    contractText: SAMPLE_CONTRACT_TEXT,
+    fallbackResult: SAMPLE_FALLBACK_RESULT,
+    explainFallbacks: SAMPLE_EXPLAIN_FALLBACKS,
+  },
+  {
+    id: "cascade-ridge-subcontract-rev-b",
+    contractText: REV_B_CONTRACT_TEXT,
+    fallbackResult: REV_B_FALLBACK_RESULT,
+    explainFallbacks: REV_B_EXPLAIN_FALLBACKS,
+  },
+];
+
+// Each entry's fingerprint is content, not input, so it is hashed once.
+const vettedFingerprints = new WeakMap<VettedContract, Promise<string>>();
+function vettedFingerprint(vc: VettedContract): Promise<string> {
+  let fp = vettedFingerprints.get(vc);
+  if (!fp) {
+    fp = fingerprintContract(vc.contractText);
+    vettedFingerprints.set(vc, fp);
+  }
+  return fp;
+}
+
+/** The vetted contract whose content hash matches `text`, or null. */
+export async function vettedContractFor(text: string): Promise<VettedContract | null> {
+  const fp = await fingerprintContract(text);
+  for (const vc of VETTED_CONTRACTS) {
+    if (fp === (await vettedFingerprint(vc))) return vc;
+  }
+  return null;
+}
+
+/** True when `text` matches any vetted contract by content hash. */
 export async function isVettedContract(text: string): Promise<boolean> {
-  return (await fingerprintContract(text)) === (await sampleFingerprint());
+  return (await vettedContractFor(text)) !== null;
 }
 
 // -----------------------------------------------------------------------------
@@ -331,12 +486,12 @@ export async function isVettedContract(text: string): Promise<boolean> {
 // (netlify/functions/demo-agent.ts). There is no second copy of this decision.
 //
 // The content hash is computed FIRST, before any inference is attempted: a match
-// to the vetted demo contract returns SAMPLE_FALLBACK_RESULT immediately, with
-// no model call, no timeout, and no network dependency, so the demo renders the
-// same three findings on every path and every run. Any other contract goes to
-// live inference through the injected runLive callback, and its result is
-// returned unchanged. A live failure propagates to the caller: an arbitrary
-// contract is never given a fabricated table.
+// to ANY vetted contract returns that entry's frozen result immediately, with no
+// model call, no timeout, and no network dependency, so the demo renders the
+// same findings on every path and every run. Any other contract goes to live
+// inference through the injected runLive callback, and its result is returned
+// unchanged. A live failure propagates to the caller: an arbitrary contract is
+// never given a fabricated table.
 // -----------------------------------------------------------------------------
 export type ReviewMode = "vetted" | "live";
 
@@ -349,8 +504,7 @@ export async function reviewContract(
   contractText: string,
   runLive: (contractText: string) => Promise<ClauseResult>,
 ): Promise<ReviewOutcome> {
-  if (await isVettedContract(contractText)) {
-    return { result: SAMPLE_FALLBACK_RESULT, mode: "vetted" };
-  }
+  const vetted = await vettedContractFor(contractText);
+  if (vetted) return { result: vetted.fallbackResult, mode: "vetted" };
   return { result: await runLive(contractText), mode: "live" };
 }

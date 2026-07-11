@@ -28,16 +28,14 @@ import {
 import { normalizeResultCopy, styleRaiseItems } from "./report-style";
 import {
   buildExtractPrompt,
-  CONTRACT_OPTIONS,
   FIVE_CLAUSES,
   isValidResult,
-  isVettedContract,
   reviewContract,
-  SAMPLE_EXPLAIN_FALLBACKS,
+  vettedContractFor,
   STATUS_NOT_FOUND,
   type Clause,
   type ClauseResult,
-  type ContractOption,
+  type VettedContract,
 } from "@sg/sample-data";
 import type { SignoffPayload } from "./demo-templates";
 import { extractPdfText, ScannedPdfError } from "./pdf";
@@ -57,7 +55,7 @@ const app: HTMLElement = root;
 interface RunSource {
   label: string;
   contractText: string;
-  option: ContractOption | null; // null when the contract came from a file
+  vetted: VettedContract | null; // the matched vetted entry, or null when it goes live
 }
 let source: RunSource | null = null;
 let result: ClauseResult | null = null;
@@ -77,12 +75,12 @@ void (async () => {
   }
 })();
 
-// The demo contract is recognized by CONTENT HASH, however it arrives (dropped
-// PDF, TXT, or pasted text): a content match returns the vetted result with no
-// model call, while any other contract goes to the model. Recognition and that
-// decision live in @sg/sample-data (reviewContract / isVettedContract), shared
-// verbatim with the watched-folder agent path. Intake is exactly two paths:
-// drop/upload a PDF, or paste the text.
+// A vetted contract (the demo contract or Rev B) is recognized by CONTENT HASH,
+// however it arrives (dropped PDF, TXT, or pasted text): a content match returns
+// that entry's frozen result with no model call, while any other contract goes
+// to the model. Recognition and that decision live in @sg/sample-data
+// (reviewContract / vettedContractFor), shared verbatim with the watched-folder
+// agent path. Intake is exactly two paths: drop/upload a PDF, or paste the text.
 
 // =============================================================================
 // Input view
@@ -152,14 +150,14 @@ function renderInput(): void {
     note.textContent = name ? `✓ ${name}` : "";
   }
 
-  // Both intake paths land here: the vetted result is keyed to CONTENT
-  // (content hash), never to how the contract arrived.
+  // Both intake paths land here: the vetted entry is keyed to CONTENT (content
+  // hash), never to how the contract arrived. A match arms the vetted result
+  // and that entry's per-clause Explain text; a miss goes live.
   async function setSourceFromText(text: string, label: string): Promise<void> {
-    const matched = await isVettedContract(text);
     source = {
       label,
       contractText: text,
-      option: matched ? (CONTRACT_OPTIONS[0] ?? null) : null,
+      vetted: await vettedContractFor(text),
     };
   }
 
@@ -552,13 +550,13 @@ async function explain(btn: HTMLButtonElement): Promise<void> {
   btn.disabled = true;
   btn.textContent = "Explaining...";
 
-  // The demo contract is deterministic on every path and run: its per-clause
-  // explanations are vetted and served with no model call, exactly like its
-  // extract short-circuit. Any other contract explains live.
-  const isVetted = !!source?.option;
+  // A vetted contract is deterministic on every path and run: its per-clause
+  // explanations are served from its frozen entry with no model call, exactly
+  // like its extract short-circuit. Any other contract explains live.
+  const vetted = source?.vetted ?? null;
 
-  let text: string | null = isVetted ? (SAMPLE_EXPLAIN_FALLBACKS[name] ?? null) : null;
-  if (!isVetted) {
+  let text: string | null = vetted ? (vetted.explainFallbacks[name] ?? null) : null;
+  if (!vetted) {
     try {
       const res = await fetch("/api/analyze", {
         method: "POST",

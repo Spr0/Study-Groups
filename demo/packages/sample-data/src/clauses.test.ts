@@ -10,13 +10,19 @@ import {
   isValidResult,
   isVettedContract,
   NOT_FOUND,
+  normalizeForFingerprint,
   parseClauseResponse,
   reviewContract,
+  REV_B_CONTRACT_TEXT,
+  REV_B_EXPLAIN_FALLBACKS,
+  REV_B_FALLBACK_RESULT,
   SAMPLE_CONTRACT_TEXT,
   SAMPLE_EXPLAIN_FALLBACKS,
   SAMPLE_FALLBACK_RESULT,
   STATUS_FOUND,
   STATUS_NOT_FOUND,
+  VETTED_CONTRACTS,
+  vettedContractFor,
   type ClauseResult,
 } from "./clauses";
 
@@ -148,6 +154,14 @@ describe("isVettedContract (content-hash recognition of the demo contract)", () 
     expect(await isVettedContract("Some other agreement between two other parties.")).toBe(false);
     expect(await isVettedContract("")).toBe(false);
   });
+  it("recognizes Rev B too, and vettedContractFor maps each text to the right entry", async () => {
+    expect(await isVettedContract(REV_B_CONTRACT_TEXT)).toBe(true);
+    expect((await vettedContractFor(SAMPLE_CONTRACT_TEXT))?.id).toBe("cascade-ridge-subcontract");
+    expect((await vettedContractFor(REV_B_CONTRACT_TEXT))?.id).toBe(
+      "cascade-ridge-subcontract-rev-b",
+    );
+    expect(await vettedContractFor("Some other agreement.")).toBeNull();
+  });
 });
 
 describe("reviewContract (the single shared entry point for both paths)", () => {
@@ -171,6 +185,15 @@ describe("reviewContract (the single shared entry point for both paths)", () => 
     // Byte-for-byte the canonical three findings, regardless of path.
     expect(outcome.result.raise).toEqual(SAMPLE_FALLBACK_RESULT.raise);
     expect(outcome.result.raise).toHaveLength(3);
+  });
+
+  it("short-circuits Rev B to its frozen result WITHOUT any inference attempt", async () => {
+    const runLive = vi.fn(async () => liveResult);
+    const outcome = await reviewContract(REV_B_CONTRACT_TEXT, runLive);
+    expect(runLive).not.toHaveBeenCalled();
+    expect(outcome.mode).toBe("vetted");
+    expect(outcome.result).toBe(REV_B_FALLBACK_RESULT);
+    expect(outcome.result.raise).toHaveLength(5);
   });
 
   it("short-circuits a whitespace/case variant of the demo contract too", async () => {
@@ -219,6 +242,45 @@ describe("reviewContract (the single shared entry point for both paths)", () => 
     await expect(reviewContract("Another different contract.", runLive)).rejects.toThrow(
       "live review failed",
     );
+  });
+});
+
+describe("the frozen Rev B vetted result (the signed-off 2026-07-11 live run)", () => {
+  it("is a valid, gated result with all five clauses Found", () => {
+    expect(isValidResult(REV_B_FALLBACK_RESULT)).toBe(true);
+    expect(foundCount(REV_B_FALLBACK_RESULT)).toBe(5);
+  });
+  it("carries the five signed-off advisory raise items, in order", () => {
+    expect(REV_B_FALLBACK_RESULT.raise).toHaveLength(5);
+    expect(REV_B_FALLBACK_RESULT.raise[0]).toMatch(/^No waiver of consequential/);
+    expect(REV_B_FALLBACK_RESULT.raise[4]).toMatch(/^No notice or claims period/);
+  });
+  it("quotes only language grounded in the Rev B contract (apostrophe/whitespace-agnostic)", () => {
+    const contract = normalizeForFingerprint(REV_B_CONTRACT_TEXT);
+    for (const c of REV_B_FALLBACK_RESULT.clauses) {
+      expect(contract).toContain(normalizeForFingerprint(c.quote));
+    }
+  });
+  it("carries a vetted explanation for every clause", () => {
+    for (const name of FIVE_CLAUSES) expect(REV_B_EXPLAIN_FALLBACKS[name]).toBeTruthy();
+  });
+  it("has no em or en dashes in the vetted copy", () => {
+    const all = JSON.stringify({
+      REV_B_CONTRACT_TEXT,
+      REV_B_FALLBACK_RESULT,
+      REV_B_EXPLAIN_FALLBACKS,
+    });
+    expect(all).not.toMatch(/[–—]/);
+  });
+  it("is registered as the second vetted contract, same source of truth", () => {
+    expect(VETTED_CONTRACTS.map((v) => v.id)).toEqual([
+      "cascade-ridge-subcontract",
+      "cascade-ridge-subcontract-rev-b",
+    ]);
+    const revB = VETTED_CONTRACTS.find((v) => v.id === "cascade-ridge-subcontract-rev-b");
+    expect(revB?.contractText).toBe(REV_B_CONTRACT_TEXT);
+    expect(revB?.fallbackResult).toBe(REV_B_FALLBACK_RESULT);
+    expect(revB?.explainFallbacks).toBe(REV_B_EXPLAIN_FALLBACKS);
   });
 });
 
